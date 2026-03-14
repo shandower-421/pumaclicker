@@ -1224,6 +1224,16 @@ function fmt(n) {
   return n.toString();
 }
 
+// Human-readable duration for offline income toast ("2h 15m", "45m", "3m 10s")
+function fmtDuration(secs) {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = Math.floor(secs % 60);
+  if (h > 0) return h + 'h' + (m > 0 ? ' ' + m + 'm' : '');
+  if (m > 0) return m + 'm' + (s > 0 ? ' ' + s + 's' : '');
+  return s + 's';
+}
+
 // ── Toast ─────────────────────────────────────────────────────────────────────
 let toastTimer = null;
 function showToast(msg) {
@@ -1661,37 +1671,54 @@ function saveGame() {
       state,
       earned:     Array.from(earned),
       celebrated: Array.from(_celebratedMilestones),
+      savedAt:    Date.now(),
     }));
   } catch (e) {
     // localStorage full or unavailable — fail silently
   }
 }
 
-// Returns true if a save was successfully loaded, false if starting fresh.
+// Returns { loaded: bool, offlinePets: number, offlineSeconds: number }
 function loadGame() {
+  const FAIL = { loaded: false, offlinePets: 0, offlineSeconds: 0 };
   try {
     const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return false;
+    if (!raw) return FAIL;
     const save = JSON.parse(raw);
-    if (!save || typeof save.state !== 'object') return false;
+    if (!save || typeof save.state !== 'object') return FAIL;
 
     // Restore state (only known keys, ignore unknown fields for safety)
     const s = save.state;
-    if (typeof s.pets         === 'number') state.pets         = s.pets;
-    if (typeof s.totalPets    === 'number') state.totalPets    = s.totalPets;
-    if (typeof s.ppc          === 'number') state.ppc          = s.ppc;
-    if (typeof s.pps          === 'number') state.pps          = s.pps;
-    if (typeof s.happiness    === 'number') state.happiness    = s.happiness;
+    if (typeof s.pets           === 'number') state.pets           = s.pets;
+    if (typeof s.totalPets      === 'number') state.totalPets      = s.totalPets;
+    if (typeof s.ppc            === 'number') state.ppc            = s.ppc;
+    if (typeof s.pps            === 'number') state.pps            = s.pps;
+    if (typeof s.happiness      === 'number') state.happiness      = s.happiness;
     if (typeof s.transcendences === 'number') state.transcendences = s.transcendences;
-    if (s.owned && typeof s.owned === 'object') state.owned = s.owned;
+    if (s.owned && typeof s.owned === 'object') state.owned        = s.owned;
 
     // Restore achievement + milestone sets
     if (Array.isArray(save.earned))     save.earned.forEach(id => earned.add(id));
     if (Array.isArray(save.celebrated)) save.celebrated.forEach(m  => _celebratedMilestones.add(m));
 
-    return true;
+    // ── Offline income ──────────────────────────────────────────────────────
+    // Award passive income earned while the tab was closed.
+    // The puma rests at h=50 (happinessMultiplier=1.0) — fair and thematic.
+    // Capped at 4 hours to prevent multi-day windfall exploits.
+    let offlinePets = 0, offlineSeconds = 0;
+    if (save.savedAt && state.pps > 0) {
+      const elapsed = Math.min((Date.now() - save.savedAt) / 1000, 4 * 3600);
+      if (elapsed >= 60) {
+        offlineSeconds = elapsed;
+        offlinePets    = state.pps * incomeMultiplier() * 1.0 * elapsed; // h=50 → mult=1.0
+        state.pets      += offlinePets;
+        state.totalPets += offlinePets;
+      }
+    }
+
+    return { loaded: true, offlinePets, offlineSeconds };
   } catch (e) {
-    return false; // corrupt save — start fresh
+    return FAIL; // corrupt save — start fresh
   }
 }
 
@@ -1786,12 +1813,18 @@ if (!localStorage.getItem(OB_WELCOME_KEY)) {
   });
 }
 
-const _hasSave = loadGame();
+const _saveResult = loadGame();
 buildShop();
 buildAchievements();
 updateUI();
-if (_hasSave && state.totalPets > 0) {
-  showToast('Welcome back! ' + fmt(Math.floor(state.pets)) + ' pets saved. &#x1F43E;');
+checkAchievements(); // catch any achievements unlocked by offline income
+if (_saveResult.loaded && state.totalPets > 0) {
+  if (_saveResult.offlinePets > 0) {
+    const dur = fmtDuration(_saveResult.offlineSeconds);
+    showToast('Welcome back! Away ' + dur + ' &#x2014; earned ' + fmt(Math.floor(_saveResult.offlinePets)) + ' pets while resting. &#x1F43E;');
+  } else {
+    showToast('Welcome back! ' + fmt(Math.floor(state.pets)) + ' pets saved. &#x1F43E;');
+  }
 }
 setInterval(saveGame, 30000); // auto-save every 30 s (catches passive income between interactions)
 requestAnimationFrame(tick);
