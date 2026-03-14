@@ -177,8 +177,8 @@ h1 {
   overflow-y: auto;
 }
 
-#shop { max-height: 340px; }
-#ach-panel { max-height: 260px; }
+#shop { max-height: 480px; }
+#ach-panel { max-height: 320px; }
 
 .panel-title {
   color: #f5c842;
@@ -275,6 +275,39 @@ h1 {
 
 #toast.show { opacity: 1; }
 
+/* Prestige box */
+#prestige-box {
+  background: #1c1828;
+  border: 1px solid #f5c84266;
+  border-radius: 10px;
+  padding: 12px 16px;
+  text-align: center;
+}
+
+#prestige-info {
+  font-size: 0.8em;
+  color: #f5c842;
+  margin-bottom: 8px;
+  letter-spacing: 0.04em;
+}
+
+#prestige-btn {
+  width: 100%;
+  background: #2a1f00;
+  border: 1px solid #f5c842;
+  border-radius: 7px;
+  padding: 9px 12px;
+  color: #f5c842;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  font-size: 0.78em;
+  font-weight: bold;
+  transition: background 0.18s;
+}
+
+#prestige-btn:hover:not(:disabled) { background: #3a2d00; }
+#prestige-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
 /* Scrollbar styling */
 .panel::-webkit-scrollbar { width: 5px; }
 .panel::-webkit-scrollbar-track { background: #0e0c18; }
@@ -323,6 +356,11 @@ h1 {
 
     <div id="total-row">total pets ever: <span id="total-val">0</span></div>
 
+    <div id="prestige-box" style="display:none;">
+      <div id="prestige-info"></div>
+      <button id="prestige-btn">&#x1F504; Prestige &mdash; Reset for &#x00D7;<span id="prestige-next-mult"></span> all gains</button>
+    </div>
+
   </div>
 
   <!-- Right -->
@@ -348,18 +386,27 @@ const state = {
   pps: 0,        // pets per second
   happiness: 50, // 0–100
   owned: {},     // upgrade id → count
+  totalClicks: 0,
+  prestige: 0,
+  prestigeMult: 1.0, // multiplier applied to all pet gains
 };
 
 // ── Upgrades ──────────────────────────────────────────────────────────────────
 const UPGRADES = [
-  { id: 'treat',     name: 'Treat Bag',          baseCost: 10,     mult: 1.5, desc: '+1 pet / click',    fn: () => { state.ppc += 1; } },
-  { id: 'brush',     name: 'Grooming Brush',      baseCost: 50,     mult: 1.5, desc: '+2 pets / click',   fn: () => { state.ppc += 2; } },
-  { id: 'catnip',    name: 'Catnip Stash',        baseCost: 100,    mult: 2.0, desc: '+1 pet / sec',      fn: () => { state.pps += 1; } },
-  { id: 'belly',     name: 'Belly Rub Technique', baseCost: 400,    mult: 1.7, desc: '+5 pets / click',   fn: () => { state.ppc += 5; } },
-  { id: 'machine',   name: 'Petting Machine',     baseCost: 1000,   mult: 2.0, desc: '+5 pets / sec',     fn: () => { state.pps += 5; } },
-  { id: 'whisperer', name: 'Puma Whisperer',      baseCost: 4000,   mult: 1.8, desc: '+20 pets / click',  fn: () => { state.ppc += 20; } },
-  { id: 'sanctuary', name: 'Puma Sanctuary',      baseCost: 10000,  mult: 2.0, desc: '+50 pets / sec',    fn: () => { state.pps += 50; } },
-  { id: 'army',      name: 'Clone Puma Army',     baseCost: 100000, mult: 2.0, desc: '+500 pets / sec',   fn: () => { state.pps += 500; } },
+  { id: 'treat',     name: 'Treat Bag',            baseCost: 10,           mult: 1.5, desc: '+1 pet / click',        fn: () => { state.ppc += 1; } },
+  { id: 'brush',     name: 'Grooming Brush',        baseCost: 50,           mult: 1.5, desc: '+2 pets / click',       fn: () => { state.ppc += 2; } },
+  { id: 'catnip',    name: 'Catnip Stash',          baseCost: 100,          mult: 2.0, desc: '+1 pet / sec',          fn: () => { state.pps += 1; } },
+  { id: 'belly',     name: 'Belly Rub Technique',   baseCost: 400,          mult: 1.7, desc: '+5 pets / click',       fn: () => { state.ppc += 5; } },
+  { id: 'machine',   name: 'Petting Machine',       baseCost: 1000,         mult: 2.0, desc: '+5 pets / sec',         fn: () => { state.pps += 5; } },
+  { id: 'whisperer', name: 'Puma Whisperer',        baseCost: 4000,         mult: 1.8, desc: '+20 pets / click',      fn: () => { state.ppc += 20; } },
+  { id: 'sanctuary', name: 'Puma Sanctuary',        baseCost: 10000,        mult: 2.0, desc: '+50 pets / sec',        fn: () => { state.pps += 50; } },
+  { id: 'army',      name: 'Clone Puma Army',       baseCost: 100000,       mult: 2.0, desc: '+500 pets / sec',       fn: () => { state.pps += 500; } },
+  { id: 'purr',      name: 'Purr Engine',           baseCost: 500000,       mult: 2.0, desc: '+2,000 pets / sec',     fn: () => { state.pps += 2000; } },
+  { id: 'galactic',  name: 'Galactic Nap Pod',      baseCost: 3000000,      mult: 2.1, desc: '+50 pets / click',      fn: () => { state.ppc += 50; } },
+  { id: 'quantum',   name: 'Quantum Catnip',        baseCost: 15000000,     mult: 2.2, desc: '+20,000 pets / sec',    fn: () => { state.pps += 20000; } },
+  { id: 'dimension', name: 'Puma Dimension',        baseCost: 100000000,    mult: 2.2, desc: '+200 pets / click',     fn: () => { state.ppc += 200; } },
+  { id: 'cosmic',    name: 'Cosmic Purr Wave',      baseCost: 1000000000,   mult: 2.5, desc: '+500,000 pets / sec',   fn: () => { state.pps += 500000; } },
+  { id: 'temporal',  name: 'Temporal Pet Loop',     baseCost: 10000000000,  mult: 2.5, desc: '+1,000 pets / click',   fn: () => { state.ppc += 1000; } },
 ];
 
 function upgradeCost(u) {
@@ -368,17 +415,26 @@ function upgradeCost(u) {
 
 // ── Achievements ──────────────────────────────────────────────────────────────
 const ACHIEVEMENTS = [
-  { id: 'first',   icon: '&#x1F43E;', name: 'First Pet',         desc: 'Pet the puma.',                check: () => state.totalPets >= 1 },
-  { id: 'c100',    icon: '&#x1F4AB;', name: 'Getting Warmed Up', desc: '100 total pets.',               check: () => state.totalPets >= 100 },
-  { id: 'c1k',     icon: '&#x2B50;',  name: 'Petting Pro',       desc: '1,000 total pets.',             check: () => state.totalPets >= 1000 },
-  { id: 'c10k',    icon: '&#x1F31F;', name: 'Puma Enthusiast',   desc: '10,000 total pets.',            check: () => state.totalPets >= 10000 },
-  { id: 'c100k',   icon: '&#x2728;',  name: 'Puma Master',       desc: '100,000 total pets.',           check: () => state.totalPets >= 100000 },
-  { id: 'c1m',     icon: '&#x1F451;', name: 'Puma God',          desc: '1,000,000 total pets.',         check: () => state.totalPets >= 1000000 },
-  { id: 'happy',   icon: '&#x2764;',  name: 'Happy Puma',        desc: 'Max out happiness.',            check: () => state.happiness >= 100 },
-  { id: 'shop5',   icon: '&#x1F6D2;', name: 'Shop Opener',       desc: 'Buy 5 upgrades total.',         check: () => totalOwned() >= 5 },
-  { id: 'shop20',  icon: '&#x1F4B0;', name: 'High Roller',       desc: 'Buy 20 upgrades total.',        check: () => totalOwned() >= 20 },
-  { id: 'auto1',   icon: '&#x1F916;', name: 'Hands-Free',        desc: 'Reach 1 pet/sec passively.',    check: () => state.pps >= 1 },
-  { id: 'auto100', icon: '&#x1F680;', name: 'Petting Factory',   desc: 'Reach 100 pets/sec passively.', check: () => state.pps >= 100 },
+  { id: 'first',    icon: '&#x1F43E;', name: 'First Pet',          desc: 'Pet the puma.',                   check: () => state.totalPets >= 1 },
+  { id: 'c100',     icon: '&#x1F4AB;', name: 'Getting Warmed Up',  desc: '100 total pets.',                  check: () => state.totalPets >= 100 },
+  { id: 'c1k',      icon: '&#x2B50;',  name: 'Petting Pro',        desc: '1,000 total pets.',                check: () => state.totalPets >= 1000 },
+  { id: 'c10k',     icon: '&#x1F31F;', name: 'Puma Enthusiast',    desc: '10,000 total pets.',               check: () => state.totalPets >= 10000 },
+  { id: 'c100k',    icon: '&#x2728;',  name: 'Puma Master',        desc: '100,000 total pets.',              check: () => state.totalPets >= 100000 },
+  { id: 'c1m',      icon: '&#x1F451;', name: 'Puma God',           desc: '1,000,000 total pets.',            check: () => state.totalPets >= 1000000 },
+  { id: 'c10m',     icon: '&#x1F525;', name: 'Puma Legend',        desc: '10,000,000 total pets.',           check: () => state.totalPets >= 10000000 },
+  { id: 'c100m',    icon: '&#x1F30C;', name: 'Puma Deity',         desc: '100,000,000 total pets.',          check: () => state.totalPets >= 100000000 },
+  { id: 'c1b',      icon: '&#x1FA90;', name: 'Puma Supreme',       desc: '1,000,000,000 total pets.',        check: () => state.totalPets >= 1000000000 },
+  { id: 'happy',    icon: '&#x2764;',  name: 'Happy Puma',         desc: 'Max out happiness.',               check: () => state.happiness >= 100 },
+  { id: 'shop5',    icon: '&#x1F6D2;', name: 'Shop Opener',        desc: 'Buy 5 upgrades total.',            check: () => totalOwned() >= 5 },
+  { id: 'shop20',   icon: '&#x1F4B0;', name: 'High Roller',        desc: 'Buy 20 upgrades total.',           check: () => totalOwned() >= 20 },
+  { id: 'shop50',   icon: '&#x1F48E;', name: 'Upgrade Obsessed',   desc: 'Buy 50 upgrades total.',           check: () => totalOwned() >= 50 },
+  { id: 'auto1',    icon: '&#x1F916;', name: 'Hands-Free',         desc: 'Reach 1 pet/sec passively.',       check: () => state.pps >= 1 },
+  { id: 'auto100',  icon: '&#x1F680;', name: 'Petting Factory',    desc: 'Reach 100 pets/sec passively.',    check: () => state.pps >= 100 },
+  { id: 'auto1k',   icon: '&#x1F525;', name: 'Petting Turbine',    desc: 'Reach 1,000 pets/sec passively.',  check: () => state.pps >= 1000 },
+  { id: 'auto10k',  icon: '&#x26A1;',  name: 'Petting Tornado',    desc: 'Reach 10,000 pets/sec passively.', check: () => state.pps >= 10000 },
+  { id: 'click1k',  icon: '&#x1F91A;', name: 'Dedicated Clicker',  desc: 'Click the puma 1,000 times.',      check: () => state.totalClicks >= 1000 },
+  { id: 'prestige1',icon: '&#x1F504;', name: 'Reborn',             desc: 'Prestige for the first time.',     check: () => state.prestige >= 1 },
+  { id: 'prestige5',icon: '&#x1F31E;', name: 'Eternal Petter',     desc: 'Prestige 5 times.',                check: () => state.prestige >= 5 },
 ];
 
 const earned = new Set();
@@ -490,9 +546,10 @@ function spawnParticles(cx, cy) {
 
 // ── Click ─────────────────────────────────────────────────────────────────────
 pumaWrapper.addEventListener('click', (e) => {
-  const gain = state.ppc;
+  const gain = state.ppc * state.prestigeMult;
   state.pets      += gain;
   state.totalPets += gain;
+  state.totalClicks++;
   state.happiness  = Math.min(100, state.happiness + 9);
 
   pumaWrapper.classList.add('petting');
@@ -571,6 +628,25 @@ function checkAchievements() {
   if (any) buildAchievements();
 }
 
+// ── Prestige ──────────────────────────────────────────────────────────────────
+const PRESTIGE_THRESHOLD = 10000000; // 10M total pets
+
+function doPrestige() {
+  if (state.totalPets < PRESTIGE_THRESHOLD) return;
+  state.prestige++;
+  state.prestigeMult = 1 + state.prestige * 0.5; // +50% per prestige
+  // Reset run state
+  state.pets     = 0;
+  state.ppc      = 1;
+  state.pps      = 0;
+  state.owned    = {};
+  state.happiness = 50;
+  buildShop();
+  updateUI();
+  checkAchievements();
+  showToast('&#x1F504; Prestige ' + state.prestige + '! All gains ×' + state.prestigeMult.toFixed(1));
+}
+
 // ── UI Update ─────────────────────────────────────────────────────────────────
 const MOODS = [
   [20,  '&#x1F620; Grumpy'],
@@ -601,6 +677,28 @@ function updateUI() {
   pumaArt.textContent = ART[getPumaState()].join('\n');
 
   refreshShopButtons();
+
+  // Prestige section
+  const prestigeBox = document.getElementById('prestige-box');
+  const prestigeBtn = document.getElementById('prestige-btn');
+  const prestigeInfo = document.getElementById('prestige-info');
+  if (state.prestige > 0) {
+    prestigeInfo.textContent = 'Prestige ' + state.prestige + '  ×' + state.prestigeMult.toFixed(1) + ' all gains';
+    prestigeInfo.style.display = 'block';
+  } else {
+    prestigeInfo.style.display = 'none';
+  }
+  const nextMult = 1 + (state.prestige + 1) * 0.5;
+  document.getElementById('prestige-next-mult').textContent = nextMult.toFixed(1);
+  if (state.totalPets >= PRESTIGE_THRESHOLD) {
+    prestigeBox.style.display = 'block';
+    prestigeBtn.disabled = false;
+  } else if (state.prestige > 0) {
+    prestigeBox.style.display = 'block';
+    prestigeBtn.disabled = true;
+  } else {
+    prestigeBox.style.display = 'none';
+  }
 }
 
 // ── Game Loop ─────────────────────────────────────────────────────────────────
@@ -611,7 +709,7 @@ function tick(now) {
   lastTick = now;
 
   if (state.pps > 0) {
-    const gain = state.pps * dt;
+    const gain = state.pps * dt * state.prestigeMult;
     state.pets      += gain;
     state.totalPets += gain;
   }
@@ -628,6 +726,7 @@ function tick(now) {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
+document.getElementById('prestige-btn').addEventListener('click', doPrestige);
 buildShop();
 buildAchievements();
 updateUI();
