@@ -12,7 +12,7 @@ Open `PumaClicker.html` in any modern browser. No server, no build step, no depe
 
 ### Happiness
 
-Your puma has feelings. Constant petting spikes happiness above 100, then it crashes. Low happiness reduces passive income. Let the puma breathe between clicking sessions.
+Your puma has feelings. Constant petting spikes happiness, but it crashes back down if you overdo it. Happiness directly scales your **passive income** (0.5× at 0% happiness, 1.0× at 50%, 1.5× at 100%). Click income is always full value. The live multiplier is shown next to the puma's mood — let the puma rest between sessions to keep it high.
 
 ### Shop
 
@@ -27,7 +27,7 @@ Once you accumulate enough lifetime pets, a Transcend button appears. Transcendi
 - Single-file HTML — all CSS and JS inline, no external dependencies except Google Fonts
 - `requestAnimationFrame` game loop with dirty-checked DOM writes
 - Compositor-safe animations (opacity-only transitions, no layout repaints)
-- `localStorage` for onboarding state (resets on clear)
+- `localStorage` for game save (`pc-save-v1`) and onboarding state
 - WCAG AA contrast verified on all text colors
 - Responsive: works on mobile, tablet, and desktop
 - Respects `prefers-reduced-motion`

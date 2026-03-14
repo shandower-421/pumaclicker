@@ -1029,6 +1029,12 @@ function incomeMultiplier() {
   return state.transcendences > 0 ? Math.pow(1.5, state.transcendences) : 1;
 }
 
+// Happiness scales passive income: h=0 → 0.5×, h=50 → 1.0× (baseline), h=100 → 1.5×
+// Applied to PPS only — click income is always full value so early-game clicks feel rewarding.
+function happinessMultiplier() {
+  return 0.5 + (state.happiness / 100);
+}
+
 function transcendThreshold() {
   // Each transcendence requires 10× more total pets.
   // Beyond t=14 the result exceeds Number.MAX_SAFE_INTEGER (9.007e15), so we
@@ -1482,6 +1488,7 @@ function checkMilestones() {
 // Dirty-check sentinels — avoid redundant DOM writes on every RAF tick
 let _lastPumaState = null;
 let _lastHapColor  = null;
+let _lastHapMult   = -1; // -1 = uninitialised; skip on first tick
 let _lastTitle     = '';
 let _wasMaxHappy   = false;
 let _lastPpc       = -1; // -1 = uninitialised; skip flash on first tick
@@ -1553,8 +1560,16 @@ function updateUI() {
     _lastHapColor = hapColor;
   }
 
-  const mood = MOODS.find(([t]) => h <= t);
-  moodText.innerHTML = mood ? mood[1] : MOODS[MOODS.length - 1][1];
+  const mood    = MOODS.find(([t]) => h <= t);
+  const hapMult = happinessMultiplier();
+  const multRounded = Math.round(hapMult * 100) / 100; // 2 decimal places
+  if (multRounded !== _lastHapMult) {
+    _lastHapMult = multRounded;
+    const moodLabel = mood ? mood[1] : MOODS[MOODS.length - 1][1];
+    const multColor = hapMult >= 1 ? 'var(--amber-bright)' : 'var(--puma-angry)';
+    const multStr   = multRounded.toFixed(2) + '&times; passive';
+    moodText.innerHTML = moodLabel + ' &nbsp;<span style="color:' + multColor + ';font-size:0.85em;opacity:0.85">' + multStr + '</span>';
+  }
 
   // Dirty-check: only rewrite puma art when mood state changes
   const ps = getPumaState();
@@ -1578,7 +1593,7 @@ function tick(now) {
   lastTick = now;
 
   if (state.pps > 0) {
-    const gain = state.pps * incomeMultiplier() * dt;
+    const gain = state.pps * incomeMultiplier() * happinessMultiplier() * dt;
     state.pets      += gain;
     state.totalPets += gain;
   }
