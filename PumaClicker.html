@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>PumaClicker</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐆</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Space+Grotesk:wght@500;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ── Design tokens ─────────────────────────────────────────────────────────── */
+:root {
+  /* Font stacks */
+  --font-display: 'Baloo 2', system-ui, sans-serif;
+  --font-body:    'Nunito', system-ui, sans-serif;
+  --font-num:     'Space Grotesk', system-ui, sans-serif;
+  --font-mono:    'Courier New', monospace;
+
+  /* Backgrounds — warm dark amber instead of cool dark purple */
+  --bg:       #0a0602;
+  --bg-card:  #120a04;
+  --bg-deep:  #060402;
+  --bg-hover: #1a1008; /* interactive surface hover */
+
+  /* Amber brand */
+  --amber:        #f5c842;
+  --amber-bright: #ffd952;
+  --amber-dim:    #c09030; /* dimmed amber — progress bars near threshold */
+  --amber-warm:   #a07830; /* warm amber text — "need X more" close state */
+
+  /* Coral accent — transcend CTA + high-energy moments */
+  --coral:        #e8663a;
+  --coral-bright: #ff7a48;
+
+  /* Text — all values WCAG AA verified on their expected backgrounds */
+  --text:        #f2e8d0; /* body text — warm cream */
+  --text-warm:   #ffe898; /* headings, values */
+  --text-mid:    #c8a860; /* secondary labels */
+  --text-muted:  #aa9470; /* panel headers */
+  --text-label:  #a08878; /* stat lbl, pets-label */
+  --text-dim:    #948470; /* total-row base */
+  --text-ghost:  #9e8e7e; /* need/owned text */
+  --text-desc:   #907870; /* upgrade/ach desc — 4.85:1 on bg */
+
+  /* Greens */
+  --green:        #80d880; /* costs */
+  --sage:         #88c070; /* pps stat */
+  --sage-label:   #6a9454; /* pps label */
+  --sage-passive: #65a05c; /* passive upgrade desc */
+
+  /* Happiness bar fill (0–20%, 21–50%, 51–80%, >80%) */
+  --hap-angry:   #d04444;
+  --hap-neutral: #d09030;
+  --hap-happy:   #70c040;
+
+  /* Puma art colors (by mood state) */
+  --puma-angry:   #d45840;
+  --puma-neutral: #f5c842; /* same as --amber */
+  --puma-happy:   #fada5e;
+  --puma-ecstatic:#fff07a;
+
+  /* Game colors */
+  --red-angry: #d45840; /* alias of --puma-angry, kept for compat */
+  --dark-text: #1a0a04;
+  --console-ghost: #706050; /* easter-egg console dim text */
+
+  /* Easing */
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Global focus ring — replaces browser default removed by reset ── */
+:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ── Touch: remove 300ms tap delay + iOS tap flash on interactive elements ── */
+#puma-wrapper,
+.upg-btn,
+#transcend-btn {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-color: var(--bg);
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--amber) 5%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 28px 28px;
+  color: var(--text);
+  font-family: var(--font-body);
+  height: 100vh;
+  height: 100dvh; /* iOS Safari: dynamic viewport height */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 16px 16px;
+  overflow: hidden;
+}
+
+h1 {
+  font-family: var(--font-display);
+  color: var(--amber);
+  font-size: 3em;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  margin-bottom: 2px;
+  line-height: 1;
+}
+
+.subtitle {
+  font-family: var(--font-body);
+  color: var(--text-muted);
+  font-size: 0.82em;
+  font-weight: 600;
+  margin-bottom: 18px;
+  letter-spacing: 0.04em;
+}
+
+#game {
+  display: grid;
+  grid-template-columns: minmax(240px, 340px) minmax(220px, 300px);
+  gap: 20px;
+  width: 100%;
+  max-width: 680px;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── Left column ── */
+#main-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+
+/* Puma wrapper — animation uses opacity-only pseudo-element (compositor-safe) */
+#puma-wrapper {
+  flex: 1;
+  min-height: 0;
+  background: var(--bg-card);
+  border: 2px solid color-mix(in srgb, var(--amber) 40%, transparent);
+  border-radius: 20px;
+  padding: 24px 20px 32px;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  transition: border-color 0.2s var(--ease-out-quart), background 0.2s var(--ease-out-quart), box-shadow 0.2s var(--ease-out-quart);
+  position: relative;
+  overflow: visible;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--amber) 12%, transparent);
+}
+
+/* Pulsing ring animates opacity only — no box-shadow repaint */
+#puma-wrapper::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 23px;
+  border: 2px solid color-mix(in srgb, var(--amber) 65%, transparent);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--amber) 6%, transparent);
+  pointer-events: none;
+  opacity: 0;
+  animation: pumaPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes pumaPulse {
+  0%, 100% { opacity: 0; }
+  50%       { opacity: 1; }
+}
+
+#puma-wrapper:hover {
+  border-color: var(--amber);
+  background: var(--bg-hover);
+  box-shadow:
+    0 0 0 5px color-mix(in srgb, var(--amber) 14%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--amber) 20%, transparent);
+}
+
+#puma-wrapper:hover::before,
+#puma-wrapper:active::before {
+  animation: none;
+  opacity: 0;
+}
+
+.click-hint {
+  font-size: 0.7em;
+  color: color-mix(in srgb, var(--amber) 40%, transparent);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+#puma-wrapper:hover .click-hint,
+#puma-wrapper:focus-visible .click-hint {
+  color: color-mix(in srgb, var(--amber) 67%, transparent);
+}
+
+#puma-art {
+  font-size: 1.12em;
+  line-height: 1.42;
+  color: var(--amber);
+  text-align: center;
+  white-space: pre;
+  font-family: var(--font-mono);
+  transition: transform 0.1s var(--ease-out-quart), filter 0.1s var(--ease-out-quart);
+  pointer-events: none;
+  text-shadow: 0 0 18px color-mix(in srgb, var(--amber) 30%, transparent);
+}
+
+#puma-wrapper.petting #puma-art {
+  transform: scale(0.86);
+  filter: brightness(1.7);
+}
+
+/* Stats block */
+#stats {
+  background: var(--bg-card);
+  border: 2px solid color-mix(in srgb, var(--amber) 25%, transparent);
+  border-radius: 18px;
+  padding: 16px 18px 14px;
+  text-align: center;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--amber) 10%, transparent);
+}
+
+#pet-count {
+  font-family: var(--font-num);
+  font-size: 5.5em;
+  color: var(--amber);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+
+.pets-label {
+  font-family: var(--font-body);
+  color: var(--text-label);
+  font-size: 0.74em;
+  font-weight: 700;
+  margin-top: 4px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--amber) 8%, transparent);
+  font-size: 0.78em;
+  color: var(--text-mid);
+}
+
+.stat-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.stat-item .val { font-family: var(--font-num); color: var(--text-warm); font-size: 1.15em; font-weight: 700; }
+.stat-item .lbl { font-family: var(--font-body); color: var(--text-label); font-size: 0.8em; font-weight: 600; }
+
+/* Per-second = passive income: sage green */
+#pps-val { color: var(--sage); }
+#pps-val + .lbl { color: var(--sage-label); }
+
+/* Happiness */
+#happiness-box {
+  background: var(--bg-card);
+  border: 2px solid color-mix(in srgb, var(--amber) 25%, transparent);
+  border-radius: 18px;
+  padding: 12px 16px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--amber) 10%, transparent);
+}
+
+.hap-header {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-body);
+  font-size: 0.8em;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+#hap-pct { color: var(--text-warm); }
+
+#hap-track {
+  background: var(--bg-deep);
+  border-radius: 8px;
+  height: 16px;
+  overflow: hidden;
+}
+
+#hap-fill {
+  height: 100%;
+  border-radius: 8px;
+  background: var(--hap-neutral); /* default before first JS tick */
+  transition: width 0.35s var(--ease-out-quart), background-color 0.5s var(--ease-out-quart);
+}
+
+#mood-text {
+  font-family: var(--font-body);
+  text-align: center;
+  margin-top: 8px;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--text-mid);
+}
+
+/* Transcend progress — shown when approaching threshold */
+#transcend-progress-row {
+  font-family: var(--font-body);
+  text-align: center;
+  font-size: 0.68em;
+  font-weight: 600;
+  color: var(--text-ghost);
+  letter-spacing: 0.04em;
+}
+
+#transcend-progress-track {
+  background: var(--bg-deep);
+  border-radius: 4px;
+  height: 4px;
+  margin: 0 0 5px;
+  overflow: hidden;
+}
+
+#transcend-progress-fill {
+  height: 100%;
+  background: color-mix(in srgb, var(--amber) 40%, transparent);
+  border-radius: 3px;
+  transition: width 0.6s var(--ease-out-quart);
+}
+
+/* Total pets */
+#total-row {
+  font-family: var(--font-body);
+  text-align: center;
+  font-size: 0.7em;
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+#total-row span { color: var(--text-ghost); }
+
+/* ── Right column ── */
+#side-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+
+.panel {
+  background: var(--bg-card);
+  border: 2px solid color-mix(in srgb, var(--amber) 22%, transparent);
+  border-radius: 18px;
+  padding: 14px 16px;
+  overflow-y: auto;
+  min-height: 0;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--amber) 8%, transparent);
+}
+
+#shop { flex: 3; }
+#ach-panel { flex: 2; }
+
+.panel-title {
+  font-family: var(--font-display);
+  color: var(--amber);
+  font-size: 0.9em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--amber) 18%, transparent);
+}
+
+/* Upgrade buttons */
+.upg-btn {
+  width: 100%;
+  background: var(--bg);
+  border: 1.5px solid color-mix(in srgb, var(--amber) 22%, transparent);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-body);
+  font-size: 0.82em;
+  transition: background 0.18s var(--ease-out-quart), border-color 0.18s var(--ease-out-quart);
+}
+
+.upg-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--amber);
+}
+
+.upg-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.upg-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 3px;
+}
+
+.upg-name { color: var(--text-warm); font-weight: 700; }
+.upg-cost { color: var(--green); font-weight: 700; white-space: nowrap; }
+.upg-desc         { color: var(--text-desc); font-size: 0.9em; display: block; }
+.upg-desc.passive { color: var(--sage-passive); }
+.upg-owned        { color: var(--text-ghost); font-size: 0.85em; font-weight: 600; }
+
+.upg-progress-track {
+  background: var(--bg-deep);
+  border-radius: 4px;
+  height: 5px;
+  margin-top: 7px;
+  overflow: hidden;
+}
+
+.upg-progress-fill {
+  height: 100%;
+  background: color-mix(in srgb, var(--amber) 33%, transparent);
+  border-radius: 3px;
+  transition: width 0.4s var(--ease-out-quart), background 0.4s var(--ease-out-quart);
+}
+
+.upg-progress-fill.close { background: color-mix(in srgb, var(--amber-dim) 80%, transparent); }
+
+.upg-need {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.82em;
+  color: var(--text-ghost);
+}
+
+.upg-need.close { color: var(--amber-warm); }
+
+/* Achievements */
+.ach-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  font-family: var(--font-body);
+  font-size: 0.8em;
+}
+
+.ach-item:not(.locked) { background: color-mix(in srgb, var(--amber) 11%, transparent); }
+.ach-item.locked { opacity: 0.22; }
+.ach-icon { font-size: 1.4em; min-width: 24px; text-align: center; }
+.ach-name { color: var(--text-warm); font-weight: 700; display: block; }
+.ach-desc { color: var(--text-desc); font-size: 0.88em; }
+
+/* Multiplier badge */
+#mult-badge {
+  font-family: var(--font-body);
+  margin-top: 8px;
+  font-size: 0.76em;
+  font-weight: 700;
+  color: var(--amber);
+  letter-spacing: 0.04em;
+}
+
+/* Transcend zone — pulse uses opacity-only pseudo-element (compositor-safe) */
+#transcend-zone {
+  background: color-mix(in srgb, var(--coral) 8%, var(--bg-card));
+  border: 2px solid color-mix(in srgb, var(--coral) 50%, transparent);
+  border-radius: 18px;
+  padding: 14px 16px;
+  text-align: center;
+  position: relative;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--coral) 15%, transparent);
+}
+
+#transcend-zone::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 20px;
+  border: 2px solid color-mix(in srgb, var(--coral) 70%, transparent);
+  pointer-events: none;
+  opacity: 0;
+  animation: transcendPulse 2s ease-in-out infinite;
+}
+
+@keyframes transcendPulse {
+  0%, 100% { opacity: 0; }
+  50%       { opacity: 1; }
+}
+
+#transcend-btn {
+  width: 100%;
+  background: var(--coral);
+  color: var(--dark-text);
+  border: none;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-family: var(--font-display);
+  font-size: 1em;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: background 0.15s var(--ease-out-quart), transform 0.1s var(--ease-out-quart), box-shadow 0.15s var(--ease-out-quart);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--coral) 60%, #000);
+}
+
+#transcend-btn:hover {
+  background: var(--coral-bright);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--coral) 60%, #000);
+}
+#transcend-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--coral) 60%, #000);
+}
+
+#transcend-desc {
+  font-family: var(--font-body);
+  margin-top: 8px;
+  font-size: 0.74em;
+  color: color-mix(in srgb, var(--coral-bright) 70%, var(--text-muted));
+  letter-spacing: 0.02em;
+}
+
+/* Particles */
+.particle {
+  position: fixed;
+  pointer-events: none;
+  font-size: 1.3em;
+  z-index: 9999;
+  animation: floatUp 1.1s ease-out forwards;
+}
+
+@keyframes floatUp {
+  0%   { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+  100% { opacity: 0; transform: translateY(-90px) scale(0.4) rotate(20deg); }
+}
+
+/* Toast */
+#toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--amber);
+  color: var(--dark-text);
+  padding: 11px 24px;
+  border-radius: 14px;
+  font-family: var(--font-body);
+  font-size: 0.88em;
+  font-weight: 700;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 10000;
+  white-space: nowrap;
+  transition: opacity 0.25s;
+  box-shadow: 0 6px 24px color-mix(in srgb, var(--amber) 30%, #000);
+}
+
+#toast.show { opacity: 1; }
+
+/* Scrollbars */
+.panel::-webkit-scrollbar { width: 6px; }
+.panel::-webkit-scrollbar-track { background: var(--bg-deep); border-radius: 3px; }
+.panel::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--amber) 40%, transparent); border-radius: 3px; }
+.panel::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--amber) 60%, transparent); }
+
+/* ── Floating gain numbers (+N) on click ── */
+.float-num {
+  position: fixed;
+  pointer-events: none;
+  font-family: var(--font-num);
+  font-weight: 700;
+  font-size: 1.3em;
+  color: var(--amber-bright);
+  z-index: 9999;
+  text-shadow: 0 1px 6px color-mix(in srgb, var(--amber) 50%, #000);
+  white-space: nowrap;
+  user-select: none;
+  animation: floatNum 1s ease-out forwards;
+}
+
+@keyframes floatNum {
+  0%   { opacity: 1; transform: translateY(0)     scale(1.2); }
+  20%  { opacity: 1; transform: translateY(-16px)  scale(1.0); }
+  100% { opacity: 0; transform: translateY(-64px)  scale(0.75); }
+}
+
+/* ── Confetti burst (outward directions via --tx/--ty custom props) ── */
+.particle.confetti {
+  animation: confettiBurst 1.3s ease-out forwards;
+}
+
+@keyframes confettiBurst {
+  0%   { opacity: 1; transform: translate(0, 0)                 scale(1)   rotate(0deg); }
+  100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.3) rotate(200deg); }
+}
+
+/* ── Full-screen amber flash on transcendence ── */
+.transcend-flash {
+  position: fixed;
+  inset: 0;
+  background: var(--amber);
+  z-index: 99998;
+  pointer-events: none;
+  animation: transcendFlash 0.65s ease-out forwards;
+}
+
+@keyframes transcendFlash {
+  0%   { opacity: 0.75; }
+  100% { opacity: 0; }
+}
+
+/* ── Shop upgrade glows when it first becomes affordable ── */
+@keyframes becameAffordable {
+  0%, 100% { border-color: color-mix(in srgb, var(--amber) 20%, transparent); box-shadow: none; }
+  40%       { border-color: var(--amber); box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 25%, transparent); }
+}
+
+.upg-btn.just-affordable { animation: becameAffordable 0.9s ease-out; }
+
+/* ── Reduced-motion: disable all infinite/looping animations ── */
+@media (prefers-reduced-motion: reduce) {
+  #puma-wrapper::before,
+  #transcend-zone::before { animation: none; opacity: 0; }
+  .particle { animation: none; opacity: 0; }
+  #hap-fill { transition: width 0s; }
+  #puma-art { transition: none; }
+  .upg-btn  { transition: none; }
+  .float-num, .transcend-flash { animation: none; opacity: 0; }
+  .upg-btn.just-affordable { animation: none; }
+}
+
+/* ── Responsive: single-column layout on narrow viewports ── */
+@media (max-width: 540px) {
+  body {
+    height: auto;
+    min-height: 100dvh;
+    min-height: 100vh; /* fallback */
+    overflow-y: auto;
+    padding: 14px 12px 24px;
+  }
+
+  /* Scale down headline and counter so they don't dominate on small screens */
+  h1           { font-size: 2.1em; margin-bottom: 2px; }
+  .subtitle    { font-size: 0.74em; margin-bottom: 12px; }
+  #pet-count   { font-size: 3.8em; }
+
+  #game {
+    grid-template-columns: 1fr;
+    height: auto;
+    flex: none;
+  }
+
+  #puma-wrapper {
+    flex: none;
+    min-height: 200px;
+  }
+
+  /* Ensure WCAG 2.5.5 minimum 44×44px touch targets on mobile */
+  .upg-btn       { min-height: 44px; padding: 10px 12px; font-size: 0.8em; }
+  #transcend-btn { min-height: 50px; font-size: 1em; }
+
+  /* Allow toast to wrap on narrow screens instead of overflowing off-edge */
+  #toast {
+    white-space: normal;
+    max-width: calc(100vw - 40px);
+    text-align: center;
+  }
+
+  #shop     { flex: none; max-height: 340px; }
+  #ach-panel{ flex: none; max-height: 260px; }
+}
+
+/* ── Landscape phone: compact layout for short viewports (e.g. iPhone rotated) ── */
+@media (max-height: 500px) and (orientation: landscape) {
+  body {
+    height: auto;
+    min-height: 100dvh;
+    overflow-y: auto;
+    padding: 6px 14px 10px;
+  }
+
+  h1       { font-size: 1.6em; margin-bottom: 1px; }
+  .subtitle { display: none; }
+
+  /* Restore two-column grid but tighter — still fits the wide landscape viewport */
+  #game {
+    grid-template-columns: minmax(200px, 300px) 1fr;
+    gap: 10px;
+    height: auto;
+    flex: none;
+  }
+
+  #puma-wrapper { min-height: 150px; padding: 10px 16px 12px; flex: none; }
+  #pet-count    { font-size: 2.8em; }
+  #stats        { padding: 8px 14px; }
+  .stat-row     { margin-top: 8px; padding-top: 7px; }
+  #happiness-box { padding: 8px 14px; }
+  #shop      { flex: none; max-height: 210px; }
+  #ach-panel { flex: none; max-height: 150px; }
+}
+
+/* ── Notch / Dynamic Island: respect safe-area-inset padding ── */
+@supports (padding: env(safe-area-inset-bottom)) {
+  body {
+    padding-right:  max(16px, env(safe-area-inset-right));
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    padding-left:   max(16px, env(safe-area-inset-left));
+  }
+}
+
+/* On mobile, bottom inset needs more breathing room */
+@media (max-width: 540px) {
+  @supports (padding: env(safe-area-inset-bottom)) {
+    body { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+  }
+}
+</style>
+</head>
+<body>
+
+<h1>&#x1F406; PumaClicker</h1>
+<p class="subtitle">click the puma. pet the puma. be the puma.</p>
+
+<div id="game">
+
+  <!-- Left -->
+  <div id="main-panel">
+
+    <div id="puma-wrapper" role="button" tabindex="0" aria-label="Pet the puma">
+      <pre id="puma-art" aria-hidden="true"></pre>
+      <span class="click-hint">[ click to pet ]</span>
+    </div>
+
+    <div id="stats">
+      <div id="pet-count">0</div>
+      <div class="pets-label">pets</div>
+      <div class="stat-row">
+        <div class="stat-item">
+          <span class="val" id="ppc-val">1</span>
+          <span class="lbl">per click</span>
+        </div>
+        <div class="stat-item">
+          <span class="val" id="pps-val">0</span>
+          <span class="lbl">per second</span>
+        </div>
+      </div>
+      <div id="mult-badge" style="display:none"></div>
+    </div>
+
+    <div id="happiness-box">
+      <div class="hap-header">
+        <span>Puma Happiness</span>
+        <span id="hap-pct">50%</span>
+      </div>
+      <div id="hap-track">
+        <div id="hap-fill" style="width:50%"></div>
+      </div>
+      <div id="mood-text">&#x1F610; Calm</div>
+    </div>
+
+    <div id="transcend-zone" style="display:none">
+      <button id="transcend-btn">✨ TRANSCEND ✨</button>
+      <div id="transcend-desc"></div>
+    </div>
+
+    <div id="transcend-progress-row" style="display:none">
+      <div id="transcend-progress-track">
+        <div id="transcend-progress-fill" style="width:0%"></div>
+      </div>
+      <span id="transcend-progress-label"></span>
+    </div>
+
+    <div id="total-row">total pets ever: <span id="total-val">0</span></div>
+
+  </div>
+
+  <!-- Right -->
+  <div id="side-panel">
+    <div id="shop" class="panel">
+      <div class="panel-title">&#x1F6D2; Shop</div>
+    </div>
+    <div id="ach-panel" class="panel">
+      <div class="panel-title">&#x1F3C6; Achievements</div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<script>
+// ── Design token mirrors ───────────────────────────────────────────────────────
+// Values must stay in sync with :root CSS custom properties above.
+const HAP_COLORS = {
+  angry:   '#d04444', // --hap-angry
+  neutral: '#d09030', // --hap-neutral
+  happy:   '#70c040', // --hap-happy
+  ecstatic:'#f5c842', // --amber (100 % happiness)
+};
+const PUMA_COLORS = {
+  angry:   '#d45840', // --puma-angry
+  neutral: '#f5c842', // --puma-neutral / --amber
+  happy:   '#fada5e', // --puma-happy
+  ecstatic:'#fff07a', // --puma-ecstatic
+};
+const CONSOLE_COLORS = {
+  brand:   '#f5c842', // --amber
+  mid:     '#c0a860', // --text-mid
+  ghost:   '#706050', // --console-ghost
+};
+
+// ── State ─────────────────────────────────────────────────────────────────────
+const state = {
+  pets: 0,
+  totalPets: 0,
+  ppc: 1,           // pets per click (base)
+  pps: 0,           // pets per second (base)
+  happiness: 50,    // 0–100
+  owned: {},        // upgrade id → count
+  transcendences: 0,// prestige count — each grants 1.5× income forever
+};
+
+// ── Upgrades ──────────────────────────────────────────────────────────────────
+const UPGRADES = [
+  { id: 'treat',     name: 'Treat Bag',          baseCost: 10,          mult: 1.5, desc: '+1 pet / click',          fn: () => { state.ppc += 1; } },
+  { id: 'brush',     name: 'Grooming Brush',      baseCost: 50,          mult: 1.5, desc: '+2 pets / click',         fn: () => { state.ppc += 2; } },
+  { id: 'catnip',    name: 'Catnip Stash',        baseCost: 100,         mult: 2.0, desc: '+1 pet / sec',            fn: () => { state.pps += 1; } },
+  { id: 'belly',     name: 'Belly Rub Technique', baseCost: 400,         mult: 1.7, desc: '+5 pets / click',         fn: () => { state.ppc += 5; } },
+  { id: 'machine',   name: 'Petting Machine',     baseCost: 1000,        mult: 2.0, desc: '+5 pets / sec',           fn: () => { state.pps += 5; } },
+  { id: 'whisperer', name: 'Puma Whisperer',      baseCost: 4000,        mult: 1.8, desc: '+20 pets / click',        fn: () => { state.ppc += 20; } },
+  { id: 'sanctuary', name: 'Puma Sanctuary',      baseCost: 10000,       mult: 2.0, desc: '+50 pets / sec',          fn: () => { state.pps += 50; } },
+  { id: 'army',      name: 'Clone Puma Army',     baseCost: 100000,      mult: 2.0, desc: '+500 pets / sec',         fn: () => { state.pps += 500; } },
+  { id: 'dimension', name: 'Puma Dimension',      baseCost: 500000,      mult: 2.0, desc: '+2,000 pets / sec',       fn: () => { state.pps += 2000; } },
+  { id: 'timepuma',  name: 'Time Puma',           baseCost: 5000000,     mult: 2.0, desc: '+20,000 pets / sec',      fn: () => { state.pps += 20000; } },
+  { id: 'quantum',   name: 'Quantum Purr',        baseCost: 50000000,    mult: 1.9, desc: '+1,000 pets / click',     fn: () => { state.ppc += 1000; } },
+  { id: 'cosmic',    name: 'Cosmic Puma',         baseCost: 500000000,   mult: 2.0, desc: '+1,000,000 pets / sec',   fn: () => { state.pps += 1000000; } },
+  { id: 'godmode',   name: 'Puma God Mode',       baseCost: 10000000000, mult: 2.0, desc: '+10,000,000 pets / sec',  fn: () => { state.pps += 10000000; } },
+];
+
+function upgradeCost(u) {
+  return Math.floor(u.baseCost * Math.pow(u.mult, state.owned[u.id] || 0));
+}
+
+// ── Transcendence ──────────────────────────────────────────────────────────────
+function incomeMultiplier() {
+  return state.transcendences > 0 ? Math.pow(1.5, state.transcendences) : 1;
+}
+
+function transcendThreshold() {
+  // Each transcendence requires 10× more total pets.
+  // Beyond t=14 the result exceeds Number.MAX_SAFE_INTEGER (9.007e15), so we
+  // clamp to a fixed astronomically large value so comparisons stay reliable.
+  const t = state.transcendences;
+  if (t >= 15) return 1e18; // effectively unreachable — safely representable
+  return 1000000 * Math.pow(10, t); // safe for t 0–14
+}
+
+function doTranscend() {
+  // Full-screen amber flash — a dramatic ceremony for a big moment
+  const flash = document.createElement('div');
+  flash.className = 'transcend-flash';
+  document.body.appendChild(flash);
+  flash.addEventListener('animationend', () => flash.remove(), { once: true });
+
+  state.transcendences += 1;
+  state.pets      = 0;
+  state.ppc       = 1;
+  state.pps       = 0;
+  state.owned     = {};
+  state.happiness = 50;
+  buildShop();
+  buildAchievements();
+  updateUI();
+  checkAchievements();
+  const mult = incomeMultiplier().toFixed(2);
+  showToast('&#x2728; Transcended! ' + mult + '&times; income — forever!');
+
+  // Confetti from the transcend button area
+  const rect = transcendBtnEl.getBoundingClientRect();
+  spawnConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2, 18);
+}
+
+// ── Achievements ──────────────────────────────────────────────────────────────
+const ACHIEVEMENTS = [
+  { id: 'first',   icon: '&#x1F43E;', name: 'First Pet',         desc: 'Pet the puma.',                check: () => state.totalPets >= 1 },
+  { id: 'c100',    icon: '&#x1F4AB;', name: 'Getting Warmed Up', desc: '100 total pets.',               check: () => state.totalPets >= 100 },
+  { id: 'c1k',     icon: '&#x2B50;',  name: 'Petting Pro',       desc: '1,000 total pets.',             check: () => state.totalPets >= 1000 },
+  { id: 'c10k',    icon: '&#x1F31F;', name: 'Puma Enthusiast',   desc: '10,000 total pets.',            check: () => state.totalPets >= 10000 },
+  { id: 'c100k',   icon: '&#x2728;',  name: 'Puma Master',       desc: '100,000 total pets.',           check: () => state.totalPets >= 100000 },
+  { id: 'c1m',     icon: '&#x1F451;', name: 'Puma God',          desc: '1,000,000 total pets.',         check: () => state.totalPets >= 1000000 },
+  { id: 'happy',   icon: '&#x2764;',  name: 'Happy Puma',        desc: 'Max out happiness.',            check: () => state.happiness >= 100 },
+  { id: 'shop5',   icon: '&#x1F6D2;', name: 'Shop Opener',       desc: 'Buy 5 upgrades total.',         check: () => totalOwned() >= 5 },
+  { id: 'shop20',  icon: '&#x1F4B0;', name: 'High Roller',       desc: 'Buy 20 upgrades total.',        check: () => totalOwned() >= 20 },
+  { id: 'auto1',      icon: '&#x1F916;', name: 'Hands-Free',        desc: 'Reach 1 pet/sec passively.',          check: () => state.pps >= 1 },
+  { id: 'auto100',    icon: '&#x1F680;', name: 'Petting Factory',   desc: 'Reach 100 pets/sec passively.',       check: () => state.pps >= 100 },
+  { id: 'auto1k',     icon: '&#x1F4A5;', name: 'Petting Colossus',  desc: 'Reach 1,000 pets/sec passively.',     check: () => state.pps >= 1000 },
+  { id: 'c10m',       icon: '&#x1F30C;', name: 'Puma Legend',       desc: '10,000,000 total pets.',              check: () => state.totalPets >= 10000000 },
+  { id: 'c100m',      icon: '&#x1F31E;', name: 'Puma Deity',        desc: '100,000,000 total pets.',             check: () => state.totalPets >= 100000000 },
+  { id: 'c1b',        icon: '&#x1FA90;', name: 'Puma Universe',     desc: '1,000,000,000 total pets.',           check: () => state.totalPets >= 1000000000 },
+  { id: 'transcend1', icon: '&#x2B50;',  name: 'Transcendence',     desc: 'Transcend for the first time.',       check: () => state.transcendences >= 1 },
+  { id: 'transcend3', icon: '&#x1F300;', name: 'Triple Ascended',   desc: 'Transcend 3 times.',                  check: () => state.transcendences >= 3 },
+  { id: 'shop50',     icon: '&#x1F9E7;', name: 'Upgrade Hoarder',   desc: 'Buy 50 upgrades total.',              check: () => totalOwned() >= 50 },
+];
+
+const earned = new Set();
+
+function totalOwned() {
+  return Object.values(state.owned).reduce((a, b) => a + b, 0);
+}
+
+// ── ASCII Puma Art ────────────────────────────────────────────────────────────
+// Each state: different eyes + mouth. Ears and body stay the same.
+const ART = {
+  angry: [
+    '  /\\_____/\\',
+    ' /  >   <  \\',
+    '(  = --- =  )',
+    ' )         (',
+    '(    ___    )',
+    ' \\  |   |  /',
+    '  \\_|___|_/',
+  ],
+  neutral: [
+    '  /\\_____/\\',
+    ' /  o   o  \\',
+    '(  =  ^  =  )',
+    ' )         (',
+    '(    ___    )',
+    ' \\  |   |  /',
+    '  \\_|___|_/',
+  ],
+  happy: [
+    '  /\\_____/\\',
+    ' /  ^   ^  \\',
+    '(  =  w  =  )',
+    ' )         (',
+    '(    ___    )',
+    ' \\  |   |  /',
+    '  \\_|___|_/',
+  ],
+  ecstatic: [
+    '  /\\_____/\\',
+    ' /  *   *  \\',
+    '(  = UwU =  )',
+    ' )         (',
+    '(    ___    )',
+    ' \\  |   |  /',
+    '  \\_|___|_/',
+  ],
+};
+
+function getPumaState() {
+  const h = state.happiness;
+  if (h <= 20) return 'angry';
+  if (h <= 55) return 'neutral';
+  if (h <= 80) return 'happy';
+  return 'ecstatic';
+}
+
+// ── Blink art — same as regular but with eyes closed ─────────────────────────
+const ART_BLINK = {
+  angry: [
+    '  /\\_____/\\',
+    ' /  -   -  \\',
+    '(  = --- =  )',
+    ' )         (',
+    '(    ___    )',
+    ' \\  |   |  /',
+    '  \\_|___|_/',
+  ],
+  neutral: [
+    '  /\\_____/\\',
+    ' /  -   -  \\',
+    '(  =  ^  =  )',
+    ' )         (',
+    '(    ___    )',
+    ' \\  |   |  /',
+    '  \\_|___|_/',
+  ],
+  happy: [
+    '  /\\_____/\\',
+    ' /  -   -  \\',
+    '(  =  w  =  )',
+    ' )         (',
+    '(    ___    )',
+    ' \\  |   |  /',
+    '  \\_|___|_/',
+  ],
+  ecstatic: [
+    '  /\\_____/\\',
+    ' /  -   -  \\',
+    '(  = UwU =  )',
+    ' )         (',
+    '(    ___    )',
+    ' \\  |   |  /',
+    '  \\_|___|_/',
+  ],
+};
+
+// ── DOM Refs ──────────────────────────────────────────────────────────────────
+const pumaWrapper         = document.getElementById('puma-wrapper');
+const pumaArt             = document.getElementById('puma-art');
+const petCountEl          = document.getElementById('pet-count');
+const ppcVal              = document.getElementById('ppc-val');
+const ppsVal              = document.getElementById('pps-val');
+const hapFill             = document.getElementById('hap-fill');
+const hapPct              = document.getElementById('hap-pct');
+const moodText            = document.getElementById('mood-text');
+const totalVal            = document.getElementById('total-val');
+const shopEl              = document.getElementById('shop');
+const achPanel            = document.getElementById('ach-panel');
+const toastEl             = document.getElementById('toast');
+// Cached refs — avoid repeated getElementById calls in the hot updateUI path
+const multBadgeEl         = document.getElementById('mult-badge');
+const transcendZoneEl     = document.getElementById('transcend-zone');
+const transcendDescEl     = document.getElementById('transcend-desc');
+const transcendBtnEl      = document.getElementById('transcend-btn');
+const transcendProgRow    = document.getElementById('transcend-progress-row');
+const transcendProgFill   = document.getElementById('transcend-progress-fill');
+const transcendProgLabel  = document.getElementById('transcend-progress-label');
+
+// ── Formatting ────────────────────────────────────────────────────────────────
+function fmt(n) {
+  // Guard against NaN / Infinity produced by overflow or division edge-cases
+  if (!isFinite(n) || isNaN(n)) return '???';
+  n = Math.floor(n);
+  if (n >= 1e18) return (n / 1e18).toFixed(2) + 'Qi'; // quintillion
+  if (n >= 1e15) return (n / 1e15).toFixed(2) + 'Q';  // quadrillion
+  if (n >= 1e12) return (n / 1e12).toFixed(2) + 'T';  // trillion
+  if (n >= 1e9)  return (n / 1e9).toFixed(2)  + 'B';  // billion
+  if (n >= 1e6)  return (n / 1e6).toFixed(2)  + 'M';  // million
+  if (n >= 1e3)  return (n / 1e3).toFixed(1)  + 'K';  // thousand
+  return n.toString();
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let toastTimer = null;
+function showToast(msg) {
+  toastEl.innerHTML = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2800);
+}
+
+// ── Particles ─────────────────────────────────────────────────────────────────
+const EMOTES = ['&#x2764;', '&#x1F43E;', '&#x2728;', '&#x1F49B;', '~', '*', '&#x2665;', '&#x1FAB6;'];
+
+function spawnParticles(cx, cy) {
+  const count = Math.min(Math.ceil(Math.log2(state.ppc + 1)) + 1, 6);
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('span');
+    el.className = 'particle';
+    el.setAttribute('aria-hidden', 'true'); // decorative, not meaningful to AT
+    el.innerHTML = EMOTES[Math.floor(Math.random() * EMOTES.length)];
+    const ox = (Math.random() - 0.5) * 70;
+    const oy = (Math.random() - 0.5) * 40;
+    el.style.left = (cx + ox) + 'px';
+    el.style.top  = (cy + oy) + 'px';
+    el.style.animationDuration = (0.7 + Math.random() * 0.6) + 's';
+    el.style.animationDelay = (Math.random() * 0.15) + 's';
+    document.body.appendChild(el);
+    el.addEventListener('animationend', () => el.remove(), { once: true });
+  }
+}
+
+// ── Floating gain numbers ─────────────────────────────────────────────────────
+function spawnFloatingNumber(cx, cy, value) {
+  const el = document.createElement('span');
+  el.className = 'float-num';
+  el.setAttribute('aria-hidden', 'true');
+  el.textContent = '+' + fmt(value);
+  const ox = (Math.random() - 0.5) * 28;
+  el.style.left = (cx + ox - 15) + 'px';
+  el.style.top  = (cy - 18) + 'px';
+  document.body.appendChild(el);
+  el.addEventListener('animationend', () => el.remove(), { once: true });
+}
+
+// ── Confetti burst (for milestones / happiness max) ───────────────────────────
+const CONFETTI_EMOTES = ['✨', '🌟', '⭐', '💫', '🎉', '🐆', '💛', '🎊'];
+
+function spawnConfetti(cx, cy, count) {
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('span');
+    el.className = 'particle confetti';
+    el.setAttribute('aria-hidden', 'true');
+    el.innerHTML = CONFETTI_EMOTES[Math.floor(Math.random() * CONFETTI_EMOTES.length)];
+    const angle  = (Math.PI * 2 * i / count) + (Math.random() - 0.5) * 0.6;
+    const radius = 55 + Math.random() * 90;
+    el.style.left = (cx + Math.cos(angle) * 12) + 'px';
+    el.style.top  = (cy + Math.sin(angle) * 12) + 'px';
+    el.style.setProperty('--tx', (Math.cos(angle) * radius) + 'px');
+    el.style.setProperty('--ty', (Math.sin(angle) * radius - 40) + 'px');
+    el.style.animationDuration = (0.85 + Math.random() * 0.6) + 's';
+    el.style.animationDelay    = (Math.random() * 0.08) + 's'; // tight burst feel
+    el.style.fontSize = (1.0 + Math.random() * 0.7) + 'em';
+    document.body.appendChild(el);
+    el.addEventListener('animationend', () => el.remove(), { once: true });
+  }
+}
+
+// ── Click / Keyboard ──────────────────────────────────────────────────────────
+function petPuma(cx, cy) {
+  const gain = state.ppc * incomeMultiplier();
+  state.pets      += gain;
+  state.totalPets += gain;
+  state.happiness  = Math.min(100, state.happiness + 9);
+
+  pumaWrapper.classList.add('petting');
+  setTimeout(() => pumaWrapper.classList.remove('petting'), 140);
+
+  if (cx !== undefined) {
+    spawnParticles(cx, cy);
+    spawnFloatingNumber(cx, cy, gain);
+  }
+  updateUI();
+  checkAchievements();
+}
+
+pumaWrapper.addEventListener('click', (e) => petPuma(e.clientX, e.clientY));
+
+// Keyboard: Enter or Space activates the puma
+pumaWrapper.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    petPuma();
+  }
+});
+
+// ── Shop ──────────────────────────────────────────────────────────────────────
+function buildShop() {
+  shopEl.innerHTML = '<div class="panel-title">&#x1F6D2; Shop</div>';
+  UPGRADES.forEach((u) => {
+    const cost  = upgradeCost(u);
+    const owned = state.owned[u.id] || 0;
+    const btn   = document.createElement('button');
+    btn.className = 'upg-btn';
+    btn.disabled  = state.pets < cost;
+    const canAfford = state.pets >= cost;
+    const progress  = canAfford ? 100 : Math.min(99, Math.floor((state.pets / cost) * 100));
+    const closeClass = (!canAfford && progress >= 60) ? ' close' : '';
+    const needMore  = canAfford ? '' : `<span class="upg-need${closeClass}">need ${fmt(cost - Math.floor(state.pets))} more</span>`;
+    btn.innerHTML = `
+      <div class="upg-top">
+        <span class="upg-name">${u.name}</span>
+        <span class="upg-cost">${fmt(cost)} &#x1F43E;</span>
+      </div>
+      <span class="upg-desc${u.desc.includes('sec') ? ' passive' : ''}">${u.desc}${owned > 0 ? ` &nbsp;<span class="upg-owned">[${owned} owned]</span>` : ''}</span>
+      ${!canAfford && progress > 0 ? `<div class="upg-progress-track"><div class="upg-progress-fill${closeClass}" style="width:${progress}%"></div></div>` : ''}
+      ${needMore}
+    `;
+    btn.addEventListener('click', () => {
+      const c = upgradeCost(u);
+      if (state.pets < c) return;
+      state.pets = Math.max(0, state.pets - c); // float subtraction guard
+      state.owned[u.id] = (state.owned[u.id] || 0) + 1;
+      u.fn();
+      buildShop();
+      updateUI();
+      checkAchievements();
+      showToast('Bought: ' + u.name + '!');
+    });
+    shopEl.appendChild(btn);
+  });
+}
+
+function refreshShopButtons() {
+  const btns = shopEl.querySelectorAll('.upg-btn');
+  UPGRADES.forEach((u, i) => {
+    const btn = btns[i];
+    if (!btn) return;
+    const wasDis = btn.disabled;
+    const nowDis = state.pets < upgradeCost(u);
+    btn.disabled = nowDis;
+    // Glow when an upgrade first becomes affordable (one-shot)
+    if (wasDis && !nowDis && !btn.classList.contains('just-affordable')) {
+      btn.classList.add('just-affordable');
+      setTimeout(() => btn.classList.remove('just-affordable'), 900);
+    }
+  });
+}
+
+// ── Achievements ──────────────────────────────────────────────────────────────
+function buildAchievements() {
+  achPanel.innerHTML = '<div class="panel-title">&#x1F3C6; Achievements</div>';
+  ACHIEVEMENTS.forEach((a) => {
+    const isEarned = earned.has(a.id);
+    const div = document.createElement('div');
+    div.className = 'ach-item' + (isEarned ? '' : ' locked');
+    div.innerHTML = `
+      <span class="ach-icon">${a.icon}</span>
+      <span>
+        <span class="ach-name">${a.name}</span>
+        <span class="ach-desc">${a.desc}</span>
+      </span>
+    `;
+    achPanel.appendChild(div);
+  });
+}
+
+function checkAchievements() {
+  let any = false;
+  ACHIEVEMENTS.forEach((a) => {
+    if (!earned.has(a.id) && a.check()) {
+      earned.add(a.id);
+      showToast(a.icon + ' Achievement: <b>' + a.name + '</b>');
+      any = true;
+    }
+  });
+  if (any) buildAchievements();
+}
+
+// ── UI Update ─────────────────────────────────────────────────────────────────
+const MOODS = [
+  [20,  '&#x1F620; Grumpy'],
+  [40,  '&#x1F610; Calm'],
+  [60,  '&#x1F60A; Content'],
+  [80,  '&#x1F604; Happy'],
+  [101, '&#x1F929; Ecstatic!'],
+];
+
+// ── Milestone celebration tracker ────────────────────────────────────────────
+const MILESTONES = [1000, 10000, 100000, 1000000, 10000000, 1000000000];
+const _celebratedMilestones = new Set();
+
+function checkMilestones() {
+  for (const m of MILESTONES) {
+    if (state.totalPets >= m && !_celebratedMilestones.has(m)) {
+      _celebratedMilestones.add(m);
+      const rect = pumaWrapper.getBoundingClientRect();
+      spawnConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2, 16);
+    }
+  }
+}
+
+// Dirty-check sentinels — avoid redundant DOM writes on every RAF tick
+let _lastPumaState = null;
+let _lastHapColor  = null;
+let _lastTitle     = '';
+let _wasMaxHappy   = false;
+
+function updateUI() {
+  const mult = incomeMultiplier();
+  petCountEl.textContent = fmt(state.pets);
+  ppcVal.textContent     = fmt(Math.floor(state.ppc * mult));
+  ppsVal.textContent     = fmt(state.pps * mult);
+  totalVal.textContent   = fmt(state.totalPets);
+
+  // Live pet count in browser tab — dirty-checked to avoid needless string thrash
+  const newTitle = fmt(state.pets) + ' 🐆 PumaClicker';
+  if (newTitle !== _lastTitle) { document.title = newTitle; _lastTitle = newTitle; }
+
+  // Multiplier badge
+  if (state.transcendences > 0) {
+    multBadgeEl.textContent  = '✨ ' + mult.toFixed(2) + '× income';
+    multBadgeEl.style.display = '';
+  } else {
+    multBadgeEl.style.display = 'none';
+  }
+
+  // Transcend zone + progress toward next threshold
+  const threshold = transcendThreshold();
+  if (state.totalPets >= threshold) {
+    transcendZoneEl.style.display  = '';
+    transcendProgRow.style.display  = 'none';
+    const nextMult = Math.pow(1.5, state.transcendences + 1).toFixed(2);
+    transcendDescEl.textContent = 'reset everything · gain ' + nextMult + '× eternal income';
+  } else {
+    transcendZoneEl.style.display = 'none';
+    // Show progress toward transcendence once ≥2% of the way there
+    const pct = state.totalPets / threshold;
+    if (pct >= 0.02) {
+      transcendProgRow.style.display  = '';
+      transcendProgFill.style.width   = (pct * 100).toFixed(1) + '%';
+      transcendProgLabel.textContent  = fmt(state.totalPets) + ' / ' + fmt(threshold) + ' → transcend';
+    } else {
+      transcendProgRow.style.display = 'none';
+    }
+  }
+
+  const h = Math.max(0, Math.min(100, state.happiness));
+  hapFill.style.width = h + '%';
+  hapPct.textContent  = Math.floor(h) + '%';
+
+  // Dirty-check: only write hapFill background when the color bucket changes
+  const hapColor = h <= 20 ? HAP_COLORS.angry : h <= 50 ? HAP_COLORS.neutral : h <= 80 ? HAP_COLORS.happy : HAP_COLORS.ecstatic;
+  if (hapColor !== _lastHapColor) {
+    hapFill.style.background = hapColor;
+    _lastHapColor = hapColor;
+  }
+
+  const mood = MOODS.find(([t]) => h <= t);
+  moodText.innerHTML = mood ? mood[1] : MOODS[MOODS.length - 1][1];
+
+  // Dirty-check: only rewrite puma art when mood state changes
+  const ps = getPumaState();
+  if (ps !== _lastPumaState) {
+    pumaArt.style.color = PUMA_COLORS[ps];
+    pumaArt.textContent = ART[ps].join('\n');
+    _lastPumaState = ps;
+  }
+
+  refreshShopButtons();
+}
+
+// ── Game Loop ─────────────────────────────────────────────────────────────────
+let lastTick = performance.now();
+
+function tick(now) {
+  // Cap dt to 5 s so a backgrounded/throttled tab can't award a windfall of pets
+  const dt = Math.min((now - lastTick) / 1000, 5);
+  lastTick = now;
+
+  if (state.pps > 0) {
+    const gain = state.pps * incomeMultiplier() * dt;
+    state.pets      += gain;
+    state.totalPets += gain;
+  }
+
+  // Happiness decays toward 50 naturally, faster below 50
+  const target = 50;
+  const diff   = target - state.happiness;
+  state.happiness += diff * dt * 0.12 + (diff > 0 ? 0 : -1.2 * dt);
+  state.happiness  = Math.max(0, Math.min(100, state.happiness));
+
+  // Burst of hearts when happiness first maxes out this session
+  if (state.happiness >= 100 && !_wasMaxHappy) {
+    _wasMaxHappy = true;
+    const rect = pumaWrapper.getBoundingClientRect();
+    spawnConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2, 10);
+  }
+  if (state.happiness < 95) _wasMaxHappy = false;
+
+  updateUI();
+  checkAchievements();
+  checkMilestones();
+  requestAnimationFrame(tick);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+transcendBtnEl.addEventListener('click', doTranscend);
+
+// Adapt "click to pet" → "tap to pet" on coarse-pointer (touch) devices
+if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) {
+  const hintEl = pumaWrapper.querySelector('.click-hint');
+  if (hintEl) hintEl.textContent = '[ tap to pet ]';
+}
+
+// ── Idle puma blink — adds life when nobody is clicking ──────────────────────
+(function scheduleBlink() {
+  const delay = 3200 + Math.random() * 4500;
+  setTimeout(() => {
+    // Only blink if the puma isn't being actively pet right now
+    if (!pumaWrapper.classList.contains('petting')) {
+      const ps = getPumaState();
+      pumaArt.textContent = ART_BLINK[ps].join('\n');
+      setTimeout(() => {
+        _lastPumaState = null; // let the next tick restore proper art
+      }, 130);
+    }
+    scheduleBlink();
+  }, delay);
+})();
+
+// ── Console easter egg — reward the curious ───────────────────────────────────
+console.log(`%c🐆  PumaClicker`, `font-size:28px;color:${CONSOLE_COLORS.brand};font-family:monospace;font-weight:bold;`);
+console.log(`%cHey, curious one. The puma sees you. 👀`, `font-size:13px;color:${CONSOLE_COLORS.mid};`);
+console.log(`%cYou found the secret. Nothing happens here.\n...or does it?`, `font-size:11px;color:${CONSOLE_COLORS.ghost};`);
+
+buildShop();
+buildAchievements();
+updateUI();
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
