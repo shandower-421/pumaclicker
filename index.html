@@ -279,6 +279,59 @@ h1 {
 .panel::-webkit-scrollbar { width: 5px; }
 .panel::-webkit-scrollbar-track { background: #0e0c18; }
 .panel::-webkit-scrollbar-thumb { background: #f5c84244; border-radius: 3px; }
+
+/* Upgrade Preview Tooltip */
+#upgrade-preview {
+  position: fixed;
+  background: #1c1828;
+  border: 1px solid #f5c842;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.78em;
+  color: #e0d8c8;
+  pointer-events: none;
+  z-index: 10001;
+  max-width: 220px;
+  box-shadow: 0 4px 24px #00000088;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+#upgrade-preview.show { opacity: 1; }
+
+.prev-title {
+  color: #f5c842;
+  font-weight: bold;
+  font-size: 1.05em;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #f5c84233;
+  padding-bottom: 5px;
+}
+
+.prev-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+  align-items: baseline;
+}
+
+.prev-label { color: #807060; }
+.prev-before { color: #c0a860; }
+.prev-arrow { color: #505050; }
+.prev-after { color: #80e080; font-weight: bold; }
+
+.prev-cost-row {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid #f5c84222;
+  display: flex;
+  justify-content: space-between;
+}
+
+.prev-affordable { color: #80e080; }
+.prev-unaffordable { color: #d06060; }
 </style>
 </head>
 <body>
@@ -338,6 +391,7 @@ h1 {
 </div>
 
 <div id="toast"></div>
+<div id="upgrade-preview"></div>
 
 <script>
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -503,6 +557,66 @@ pumaWrapper.addEventListener('click', (e) => {
   checkAchievements();
 });
 
+// ── Upgrade Preview ───────────────────────────────────────────────────────────
+const previewEl = document.getElementById('upgrade-preview');
+let previewVisible = false;
+
+function showUpgradePreview(u, rect) {
+  const cost = upgradeCost(u);
+  const affordable = state.pets >= cost;
+
+  // Calculate projected stats after purchase
+  let projPpc = state.ppc;
+  let projPps = state.pps;
+  if (u.desc.includes('/ click')) {
+    const match = u.desc.match(/\+(\d+) pet/);
+    if (match) projPpc += parseInt(match[1], 10);
+  } else if (u.desc.includes('/ sec')) {
+    const match = u.desc.match(/\+(\d+) pet/);
+    if (match) projPps += parseInt(match[1], 10);
+  }
+
+  previewEl.innerHTML = `
+    <div class="prev-title">${u.name}</div>
+    <div class="prev-row">
+      <span class="prev-label">per click</span>
+      <span>
+        <span class="prev-before">${fmt(state.ppc)}</span>
+        <span class="prev-arrow"> → </span>
+        <span class="prev-after">${fmt(projPpc)}</span>
+      </span>
+    </div>
+    <div class="prev-row">
+      <span class="prev-label">per sec</span>
+      <span>
+        <span class="prev-before">${fmt(state.pps)}</span>
+        <span class="prev-arrow"> → </span>
+        <span class="prev-after">${fmt(projPps)}</span>
+      </span>
+    </div>
+    <div class="prev-cost-row">
+      <span class="prev-label">cost</span>
+      <span class="${affordable ? 'prev-affordable' : 'prev-unaffordable'}">${fmt(cost)} 🐾</span>
+    </div>
+  `;
+
+  // Position tooltip to the left of the shop panel
+  const tipWidth = 220;
+  let x = rect.left - tipWidth - 10;
+  if (x < 4) x = rect.right + 10;
+  const y = Math.min(rect.top, window.innerHeight - 160);
+
+  previewEl.style.left = x + 'px';
+  previewEl.style.top  = y + 'px';
+  previewEl.classList.add('show');
+  previewVisible = true;
+}
+
+function hideUpgradePreview() {
+  previewEl.classList.remove('show');
+  previewVisible = false;
+}
+
 // ── Shop ──────────────────────────────────────────────────────────────────────
 function buildShop() {
   shopEl.innerHTML = '<div class="panel-title">&#x1F6D2; Shop</div>';
@@ -519,12 +633,15 @@ function buildShop() {
       </div>
       <span class="upg-desc">${u.desc}${owned > 0 ? ` &nbsp;<span class="upg-owned">[${owned} owned]</span>` : ''}</span>
     `;
+    btn.addEventListener('mouseenter', () => showUpgradePreview(u, btn.getBoundingClientRect()));
+    btn.addEventListener('mouseleave', hideUpgradePreview);
     btn.addEventListener('click', () => {
       const c = upgradeCost(u);
       if (state.pets < c) return;
       state.pets -= c;
       state.owned[u.id] = (state.owned[u.id] || 0) + 1;
       u.fn();
+      hideUpgradePreview();
       buildShop();
       updateUI();
       checkAchievements();
