@@ -1056,11 +1056,8 @@ h1            { animation: pageEnter      0.55s var(--ease-out-quart)  0ms  both
 
 <div id="game">
 
-  <!-- Left column: achievements, stats, synergies -->
+  <!-- Left column: stats, synergies, achievements -->
   <div id="left-panel">
-    <div id="ach-panel" class="panel">
-      <div class="panel-title">&#x1F3C6; Achievements</div>
-    </div>
     <!-- Feature B — Statistics panel -->
     <div id="stats-panel" class="panel">
       <button id="stats-toggle" class="panel-title stats-toggle-btn" aria-expanded="false" aria-controls="stats-body">
@@ -1075,6 +1072,9 @@ h1            { animation: pageEnter      0.55s var(--ease-out-quart)  0ms  both
     <!-- Feature C — Synergy panel (hidden until first unlock) -->
     <div id="synergy-panel" class="panel" style="display:none">
       <div class="panel-title">&#x2728; Synergies</div>
+    </div>
+    <div id="ach-panel" class="panel">
+      <div class="panel-title">&#x1F3C6; Achievements</div>
     </div>
   </div>
 
