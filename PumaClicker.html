@@ -401,6 +401,9 @@ h1 {
   font-family: var(--font-body);
   font-size: 0.82em;
   transition: background 0.18s var(--ease-out-quart), border-color 0.18s var(--ease-out-quart);
+  /* Fixed height: prevents buttons from resizing when progress bars / "need more"
+     text appears or disappears after a purchase — no position drift on rapid clicks */
+  min-height: 90px;
 }
 
 .upg-btn:hover:not(:disabled) {
@@ -677,8 +680,8 @@ h1 {
     min-height: 200px;
   }
 
-  /* Ensure WCAG 2.5.5 minimum 44×44px touch targets on mobile */
-  .upg-btn       { min-height: 44px; padding: 10px 12px; font-size: 0.8em; }
+  /* Ensure WCAG 2.5.5 minimum 44×44px touch targets on mobile (base min-height: 90px preserved) */
+  .upg-btn       { padding: 10px 12px; font-size: 0.8em; }
   #transcend-btn { min-height: 50px; font-size: 1em; }
 
   /* Allow toast to wrap on narrow screens instead of overflowing off-edge */
@@ -1315,12 +1318,63 @@ function buildShop() {
       state.pets = Math.max(0, state.pets - c); // float subtraction guard
       state.owned[u.id] = (state.owned[u.id] || 0) + 1;
       u.fn();
-      buildShop();
+      updateShopInPlace(); // mutate existing buttons — no DOM rebuild, no position drift
       updateUI();
       checkAchievements();
       showToast('Bought: ' + u.name + '!');
     });
     shopEl.appendChild(btn);
+  });
+}
+
+// Update shop button content in-place after a purchase.
+// Mutates existing <button> elements rather than destroying and recreating them,
+// so button Y-positions never shift mid-interaction (no drift for rapid clicks).
+function updateShopInPlace() {
+  const btns = shopEl.querySelectorAll('.upg-btn');
+  if (btns.length !== UPGRADES.length) { buildShop(); return; } // safety: full rebuild if DOM is stale
+  UPGRADES.forEach((u, i) => {
+    const btn        = btns[i];
+    const cost       = upgradeCost(u);
+    const owned      = state.owned[u.id] || 0;
+    const canAfford  = state.pets >= cost;
+    const progress   = canAfford ? 100 : Math.min(99, Math.floor((state.pets / cost) * 100));
+    const closeClass = (!canAfford && progress >= 60) ? ' close' : '';
+
+    btn.disabled = !canAfford;
+
+    // Cost label
+    btn.querySelector('.upg-cost').innerHTML = fmt(cost) + ' &#x1F43E;';
+
+    // Description + owned badge (preserve passive class)
+    const descEl = btn.querySelector('.upg-desc');
+    descEl.innerHTML = u.desc + (owned > 0 ? ` &nbsp;<span class="upg-owned">[${owned} owned]</span>` : '');
+
+    // Progress bar — add if missing, remove if no longer needed
+    let track = btn.querySelector('.upg-progress-track');
+    if (!canAfford && progress > 0) {
+      if (!track) {
+        track = document.createElement('div');
+        track.className = 'upg-progress-track';
+        btn.appendChild(track);
+      }
+      track.innerHTML = `<div class="upg-progress-fill${closeClass}" style="width:${progress}%"></div>`;
+    } else if (track) {
+      track.remove();
+    }
+
+    // "Need X more" label — add if missing, remove if affordable
+    let needEl = btn.querySelector('.upg-need');
+    if (!canAfford) {
+      if (!needEl) {
+        needEl = document.createElement('span');
+        btn.appendChild(needEl);
+      }
+      needEl.className = 'upg-need' + closeClass;
+      needEl.textContent = 'need ' + fmt(cost - Math.floor(state.pets)) + ' more';
+    } else if (needEl) {
+      needEl.remove();
+    }
   });
 }
 
