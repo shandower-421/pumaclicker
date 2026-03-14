@@ -732,6 +732,92 @@ h1 {
     body { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
   }
 }
+
+/* ── Onboarding: welcome card ──────────────────────────────────────────────── */
+#onboard-card {
+  position: fixed;
+  bottom: 72px;
+  right: 20px;
+  background: var(--bg-card);
+  border: 2px solid color-mix(in srgb, var(--amber) 40%, transparent);
+  border-radius: 18px;
+  padding: 14px 16px;
+  width: min(230px, calc(100vw - 40px));
+  z-index: 9000;
+  font-family: var(--font-body);
+  font-size: 0.8em;
+  box-shadow:
+    0 8px 32px color-mix(in srgb, #000 55%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--amber) 10%, transparent);
+  animation: obSlideIn 0.4s var(--ease-out-quart) forwards;
+}
+
+#onboard-card.dismissing {
+  animation: obSlideOut 0.3s var(--ease-out-quart) forwards;
+}
+
+@keyframes obSlideIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes obSlideOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(14px); }
+}
+
+.ob-header {
+  font-family: var(--font-display);
+  font-size: 1em;
+  font-weight: 700;
+  color: var(--amber);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.ob-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.2em;
+  line-height: 1;
+  padding: 0 0 0 8px;
+  cursor: pointer;
+  transition: color 0.15s var(--ease-out-quart);
+}
+
+.ob-close:hover { color: var(--text); }
+.ob-close:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; border-radius: 3px; }
+
+.ob-tip {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.ob-tip:last-child { margin-bottom: 0; }
+.ob-tip-icon { flex-shrink: 0; }
+.ob-tip b { color: var(--text-warm); font-weight: 700; }
+
+/* ── Onboarding: happiness hint ────────────────────────────────────────────── */
+#hap-hint {
+  margin-top: 8px;
+  padding: 7px 11px;
+  background: color-mix(in srgb, var(--hap-angry) 12%, var(--bg-deep));
+  border: 1px solid color-mix(in srgb, var(--hap-angry) 35%, transparent);
+  border-radius: 10px;
+  font-family: var(--font-body);
+  font-size: 0.76em;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--hap-angry) 55%, var(--text));
+  line-height: 1.4;
+  animation: obSlideIn 0.35s var(--ease-out-quart) forwards;
+}
 </style>
 </head>
 <body>
@@ -1319,6 +1405,7 @@ function updateUI() {
   }
 
   refreshShopButtons();
+  maybeShowHapHint();
 }
 
 // ── Game Loop ─────────────────────────────────────────────────────────────────
@@ -1384,6 +1471,78 @@ if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) {
 console.log(`%c🐆  PumaClicker`, `font-size:28px;color:${CONSOLE_COLORS.brand};font-family:monospace;font-weight:bold;`);
 console.log(`%cHey, curious one. The puma sees you. 👀`, `font-size:13px;color:${CONSOLE_COLORS.mid};`);
 console.log(`%cYou found the secret. Nothing happens here.\n...or does it?`, `font-size:11px;color:${CONSOLE_COLORS.ghost};`);
+
+// ── Onboarding ─────────────────────────────────────────────────────────────────
+// LocalStorage keys are versioned so future changes can re-show hints.
+const OB_WELCOME_KEY = 'pc-ob-welcome-v1';
+const OB_HAP_KEY     = 'pc-ob-hap-v1';
+
+// Happiness hint — shown once when happiness first drops below 35%
+let _hapHintPending = !localStorage.getItem(OB_HAP_KEY);
+
+function maybeShowHapHint() {
+  if (!_hapHintPending) return;
+  if (state.happiness > 35) return;
+  _hapHintPending = false;
+  localStorage.setItem(OB_HAP_KEY, '1');
+
+  const hapBox = document.getElementById('happiness-box');
+  const hint   = document.createElement('div');
+  hint.id = 'hap-hint';
+  hint.textContent = '💡 Over-petting lowers happiness — let the puma rest to recover!';
+  hapBox.appendChild(hint);
+
+  // Auto-fade after 5 s
+  setTimeout(() => {
+    hint.style.transition = 'opacity 0.4s var(--ease-out-quart)';
+    hint.style.opacity    = '0';
+    setTimeout(() => hint.remove(), 420);
+  }, 5000);
+}
+
+// Welcome card — shown once to first-time visitors only
+if (!localStorage.getItem(OB_WELCOME_KEY)) {
+  const card = document.createElement('div');
+  card.id = 'onboard-card';
+  card.setAttribute('role', 'note');
+  card.setAttribute('aria-label', 'How to play PumaClicker');
+  card.innerHTML = `
+    <div class="ob-header">
+      🐆 How to play
+      <button class="ob-close" aria-label="Dismiss tips">×</button>
+    </div>
+    <div class="ob-tip">
+      <span class="ob-tip-icon">🐾</span>
+      <span><b>Click</b> the puma to earn pets</span>
+    </div>
+    <div class="ob-tip">
+      <span class="ob-tip-icon">🛒</span>
+      <span>Spend pets in the <b>Shop</b> for automatic income</span>
+    </div>
+    <div class="ob-tip">
+      <span class="ob-tip-icon">💛</span>
+      <span>Keep puma <b>happy</b> for a passive income bonus</span>
+    </div>
+  `;
+  document.body.appendChild(card);
+
+  function dismissWelcome() {
+    if (!card.parentNode) return;
+    card.classList.add('dismissing');
+    card.addEventListener('animationend', () => card.remove(), { once: true });
+    localStorage.setItem(OB_WELCOME_KEY, '1');
+  }
+
+  card.querySelector('.ob-close').addEventListener('click', dismissWelcome);
+
+  // Auto-dismiss on first shop purchase — user got the point
+  shopEl.addEventListener('click', function onFirstBuy(e) {
+    if (e.target.closest('.upg-btn:not(:disabled)')) {
+      shopEl.removeEventListener('click', onFirstBuy);
+      dismissWelcome();
+    }
+  });
+}
 
 buildShop();
 buildAchievements();
