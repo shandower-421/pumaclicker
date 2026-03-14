@@ -126,15 +126,24 @@ h1 {
 
 #game {
   display: grid;
-  grid-template-columns: minmax(240px, 340px) minmax(220px, 300px);
+  grid-template-columns: minmax(200px, 260px) minmax(260px, 360px) minmax(200px, 280px);
   gap: 20px;
   width: 100%;
-  max-width: 680px;
+  max-width: 980px;
   flex: 1;
   min-height: 0;
 }
 
-/* ── Left column ── */
+/* ── Left column (achievements, stats, synergies) ── */
+#left-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* ── Center column (puma) ── */
 #main-panel {
   display: flex;
   flex-direction: column;
@@ -375,7 +384,7 @@ h1 {
 #new-game-btn:hover   { opacity: 1; }
 #new-game-btn.confirm { color: var(--coral); opacity: 1; }
 
-/* ── Right column ── */
+/* ── Right column (shop) ── */
 #side-panel {
   display: flex;
   flex-direction: column;
@@ -393,9 +402,9 @@ h1 {
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--amber) 8%, transparent);
 }
 
-#shop { flex: 3; }
-#ach-panel { flex: 2; }
-#stats-panel { flex: 0 0 auto; }
+#shop      { flex: 1; }         /* fills full right column */
+#ach-panel { flex: 1; }         /* fills most of left column */
+#stats-panel   { flex: 0 0 auto; }
 #synergy-panel { flex: 0 0 auto; }
 
 .panel-title {
@@ -772,7 +781,7 @@ h1 {
 /* ── Reduced-motion: disable all animations ── */
 @media (prefers-reduced-motion: reduce) {
   h1, .subtitle, #puma-wrapper, #stats,
-  #happiness-box, #side-panel { animation: none; opacity: 1; transform: none; }
+  #happiness-box, #side-panel, #left-panel { animation: none; opacity: 1; transform: none; }
   #puma-wrapper::before,
   #transcend-zone::before { animation: none; opacity: 0; }
   .particle { animation: none; opacity: 0; }
@@ -786,6 +795,24 @@ h1 {
   #golden-banner, #golden-banner.dismissing { animation: none; transform: translateX(-50%); opacity: 1; }
   #puma-wrapper.golden-puma #puma-art { animation: none; filter: brightness(1.4); }
   .syn-item { animation: none; }
+}
+
+/* ── Responsive: two-column on medium viewports (tablet) ── */
+@media (max-width: 780px) and (min-width: 541px) {
+  #game {
+    /* Left panel drops below; puma and shop share the top row */
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+  }
+  #left-panel {
+    grid-column: 1 / -1; /* full width below the top two panels */
+    flex-direction: row;
+    flex-wrap: wrap;
+    overflow-y: visible;
+  }
+  #ach-panel     { flex: 1 1 240px; max-height: 280px; }
+  #stats-panel   { flex: 0 0 auto; min-width: 180px; }
+  #synergy-panel { flex: 0 0 auto; min-width: 180px; }
 }
 
 /* ── Responsive: single-column layout on narrow viewports ── */
@@ -809,6 +836,11 @@ h1 {
     flex: none;
   }
 
+  /* On mobile show puma first, shop second, left-panel last */
+  #main-panel  { order: 1; }
+  #side-panel  { order: 2; }
+  #left-panel  { order: 3; }
+
   #puma-wrapper {
     flex: none;
     min-height: 200px;
@@ -829,7 +861,7 @@ h1 {
   #ach-panel{ flex: none; max-height: 260px; }
 }
 
-/* ── Landscape phone: compact layout for short viewports (e.g. iPhone rotated) ── */
+/* ── Landscape phone: compact 3-column layout ── */
 @media (max-height: 500px) and (orientation: landscape) {
   body {
     height: auto;
@@ -841,9 +873,8 @@ h1 {
   h1       { font-size: 1.6em; margin-bottom: 1px; }
   .subtitle { display: none; }
 
-  /* Restore two-column grid but tighter — still fits the wide landscape viewport */
   #game {
-    grid-template-columns: minmax(200px, 300px) 1fr;
+    grid-template-columns: minmax(160px, 220px) minmax(200px, 300px) minmax(160px, 220px);
     gap: 10px;
     height: auto;
     flex: none;
@@ -854,8 +885,8 @@ h1 {
   #stats        { padding: 8px 14px; }
   .stat-row     { margin-top: 8px; padding-top: 7px; }
   #happiness-box { padding: 8px 14px; }
-  #shop      { flex: none; max-height: 210px; }
-  #ach-panel { flex: none; max-height: 150px; }
+  #shop      { flex: 1; max-height: 210px; }
+  #ach-panel { flex: 1; max-height: 180px; }
 }
 
 /* ── Notch / Dynamic Island: respect safe-area-inset padding ── */
@@ -885,8 +916,14 @@ h1 {
   to   { opacity: 1; transform: translateX(0); }
 }
 
+@keyframes pageEnterLeft {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
 h1            { animation: pageEnter      0.55s var(--ease-out-quart)  0ms  both; }
 .subtitle     { animation: pageEnter      0.55s var(--ease-out-quart) 80ms  both; }
+#left-panel   { animation: pageEnterLeft  0.55s var(--ease-out-quart) 180ms both; }
 #puma-wrapper { animation: pageEnter      0.5s  var(--ease-out-quart) 150ms both; }
 #stats        { animation: pageEnter      0.5s  var(--ease-out-quart) 200ms both; }
 #happiness-box{ animation: pageEnter      0.5s  var(--ease-out-quart) 250ms both; }
@@ -1019,7 +1056,29 @@ h1            { animation: pageEnter      0.55s var(--ease-out-quart)  0ms  both
 
 <div id="game">
 
-  <!-- Left -->
+  <!-- Left column: achievements, stats, synergies -->
+  <div id="left-panel">
+    <div id="ach-panel" class="panel">
+      <div class="panel-title">&#x1F3C6; Achievements</div>
+    </div>
+    <!-- Feature B — Statistics panel -->
+    <div id="stats-panel" class="panel">
+      <button id="stats-toggle" class="panel-title stats-toggle-btn" aria-expanded="false" aria-controls="stats-body">
+        &#x1F4CA; Statistics <span class="stats-chevron" aria-hidden="true">&#x25B8;</span>
+      </button>
+      <div id="stats-body" class="stats-body hidden">
+        <div class="stat-row-panel"><span class="stat-lbl">Total Clicks</span><span class="stat-val" id="sp-clicks">0</span></div>
+        <div class="stat-row-panel"><span class="stat-lbl">Time Played</span><span class="stat-val" id="sp-time">0s</span></div>
+        <div class="stat-row-panel"><span class="stat-lbl">Peak PPS</span><span class="stat-val" id="sp-peak">0 /s</span></div>
+      </div>
+    </div>
+    <!-- Feature C — Synergy panel (hidden until first unlock) -->
+    <div id="synergy-panel" class="panel" style="display:none">
+      <div class="panel-title">&#x2728; Synergies</div>
+    </div>
+  </div>
+
+  <!-- Center column: puma + counters -->
   <div id="main-panel">
 
     <div id="puma-wrapper" role="button" tabindex="0" aria-label="Pet the puma">
@@ -1071,28 +1130,10 @@ h1            { animation: pageEnter      0.55s var(--ease-out-quart)  0ms  both
 
   </div>
 
-  <!-- Right -->
+  <!-- Right column: shop -->
   <div id="side-panel">
     <div id="shop" class="panel">
       <div class="panel-title">&#x1F6D2; Shop</div>
-    </div>
-    <div id="ach-panel" class="panel">
-      <div class="panel-title">&#x1F3C6; Achievements</div>
-    </div>
-    <!-- Feature B — Statistics panel -->
-    <div id="stats-panel" class="panel">
-      <button id="stats-toggle" class="panel-title stats-toggle-btn" aria-expanded="false" aria-controls="stats-body">
-        &#x1F4CA; Statistics <span class="stats-chevron" aria-hidden="true">&#x25B8;</span>
-      </button>
-      <div id="stats-body" class="stats-body hidden">
-        <div class="stat-row-panel"><span class="stat-lbl">Total Clicks</span><span class="stat-val" id="sp-clicks">0</span></div>
-        <div class="stat-row-panel"><span class="stat-lbl">Time Played</span><span class="stat-val" id="sp-time">0s</span></div>
-        <div class="stat-row-panel"><span class="stat-lbl">Peak PPS</span><span class="stat-val" id="sp-peak">0 /s</span></div>
-      </div>
-    </div>
-    <!-- Feature C — Synergy panel (hidden until first unlock) -->
-    <div id="synergy-panel" class="panel" style="display:none">
-      <div class="panel-title">&#x2728; Synergies</div>
     </div>
   </div>
 
