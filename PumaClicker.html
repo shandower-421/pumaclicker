@@ -395,6 +395,8 @@ h1 {
 
 #shop { flex: 3; }
 #ach-panel { flex: 2; }
+#stats-panel { flex: 0 0 auto; }
+#synergy-panel { flex: 0 0 auto; }
 
 .panel-title {
   font-family: var(--font-display);
@@ -650,6 +652,115 @@ h1 {
   100% { opacity: 0; }
 }
 
+/* ── Feature A — Golden Puma ── */
+@keyframes goldenPulse {
+  0%, 100% { filter: brightness(1.0); }
+  50%       { filter: brightness(1.5); }
+}
+@keyframes bannerSlideDown {
+  from { transform: translateX(-50%) translateY(-110%); opacity: 0; }
+  to   { transform: translateX(-50%) translateY(0);     opacity: 1; }
+}
+@keyframes bannerSlideUp {
+  from { transform: translateX(-50%) translateY(0);     opacity: 1; }
+  to   { transform: translateX(-50%) translateY(-110%); opacity: 0; }
+}
+
+#golden-banner {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: color-mix(in srgb, var(--amber) 92%, black);
+  color: #1a1200;
+  font-family: var(--font-display);
+  font-size: 0.9em;
+  font-weight: 700;
+  padding: 9px 14px 9px 16px;
+  border-radius: 20px;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--amber) 40%, transparent);
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: bannerSlideDown 0.35s var(--ease-out-quart) both;
+  white-space: nowrap;
+}
+#golden-banner.dismissing {
+  animation: bannerSlideUp 0.3s var(--ease-out-quart) forwards;
+}
+#golden-dismiss {
+  background: none;
+  border: none;
+  color: #1a1200;
+  font-size: 1.1em;
+  cursor: pointer;
+  padding: 0 2px;
+  opacity: 0.6;
+  line-height: 1;
+}
+#golden-dismiss:hover { opacity: 1; }
+
+#puma-wrapper.golden-puma #puma-art {
+  color: var(--puma-ecstatic);
+  animation: goldenPulse 1.2s ease-in-out infinite;
+}
+
+/* ── Feature B — Stats panel ── */
+#stats-panel { flex: 1; min-height: unset; }
+#stats-panel .stats-toggle-btn {
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0;
+  margin-bottom: 0;
+  color: var(--amber);
+  font-family: var(--font-display);
+  font-size: 0.9em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding-bottom: 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--amber) 18%, transparent);
+}
+#stats-panel .stats-toggle-btn:hover { opacity: 0.8; }
+.stats-chevron { transition: transform 0.2s var(--ease-out-quart); }
+.stats-body { padding-top: 8px; }
+.stats-body.hidden { display: none; }
+.stat-row-panel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 0.78em;
+  border-bottom: 1px solid color-mix(in srgb, var(--amber) 6%, transparent);
+}
+.stat-lbl { color: var(--text-mid); }
+.stat-val { color: var(--amber); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ── Feature C — Synergy panel ── */
+#synergy-panel { flex: 1; min-height: unset; }
+.syn-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--amber) 8%, transparent);
+  animation: synEarned 0.6s var(--ease-out-quart) both;
+}
+.syn-icon { font-size: 1.1em; flex-shrink: 0; }
+.syn-text { display: flex; flex-direction: column; gap: 2px; }
+.syn-name { font-size: 0.78em; font-weight: 700; color: var(--amber); }
+.syn-effect { font-size: 0.72em; color: var(--sage-passive); }
+@keyframes synEarned {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
 /* ── Shop upgrade glows when it first becomes affordable ── */
 @keyframes becameAffordable {
   0%, 100% { border-color: color-mix(in srgb, var(--amber) 20%, transparent); box-shadow: none; }
@@ -672,6 +783,9 @@ h1 {
   .upg-btn.just-affordable { animation: none; }
   .count-bumping, .mood-flashing,
   .ach-item.just-earned, .stat-item .val.stat-bumping { animation: none; transform: none; }
+  #golden-banner, #golden-banner.dismissing { animation: none; transform: translateX(-50%); opacity: 1; }
+  #puma-wrapper.golden-puma #puma-art { animation: none; filter: brightness(1.4); }
+  .syn-item { animation: none; }
 }
 
 /* ── Responsive: single-column layout on narrow viewports ── */
@@ -965,6 +1079,21 @@ h1            { animation: pageEnter      0.55s var(--ease-out-quart)  0ms  both
     <div id="ach-panel" class="panel">
       <div class="panel-title">&#x1F3C6; Achievements</div>
     </div>
+    <!-- Feature B — Statistics panel -->
+    <div id="stats-panel" class="panel">
+      <button id="stats-toggle" class="panel-title stats-toggle-btn" aria-expanded="false" aria-controls="stats-body">
+        &#x1F4CA; Statistics <span class="stats-chevron" aria-hidden="true">&#x25B8;</span>
+      </button>
+      <div id="stats-body" class="stats-body hidden">
+        <div class="stat-row-panel"><span class="stat-lbl">Total Clicks</span><span class="stat-val" id="sp-clicks">0</span></div>
+        <div class="stat-row-panel"><span class="stat-lbl">Time Played</span><span class="stat-val" id="sp-time">0s</span></div>
+        <div class="stat-row-panel"><span class="stat-lbl">Peak PPS</span><span class="stat-val" id="sp-peak">0 /s</span></div>
+      </div>
+    </div>
+    <!-- Feature C — Synergy panel (hidden until first unlock) -->
+    <div id="synergy-panel" class="panel" style="display:none">
+      <div class="panel-title">&#x2728; Synergies</div>
+    </div>
   </div>
 
 </div>
@@ -1001,6 +1130,13 @@ const state = {
   happiness: 50,    // 0–100
   owned: {},        // upgrade id → count
   transcendences: 0,// prestige count — each grants 1.5× income forever
+  // Feature A — Golden Puma Events
+  goldenActive: false,
+  goldenEndsAt: 0,  // absolute performance.now() ms timestamp
+  // Feature B — Statistics (survive transcendence)
+  totalClicks: 0,
+  timePlayed:  0,   // seconds with tab open
+  peakPps:     0,   // highest effective PPS ever
 };
 
 // ── Upgrades ──────────────────────────────────────────────────────────────────
@@ -1026,7 +1162,8 @@ function upgradeCost(u) {
 
 // ── Transcendence ──────────────────────────────────────────────────────────────
 function incomeMultiplier() {
-  return state.transcendences > 0 ? Math.pow(1.5, state.transcendences) : 1;
+  const base = state.transcendences > 0 ? Math.pow(1.5, state.transcendences) : 1;
+  return base * (state.goldenActive ? 3 : 1);
 }
 
 // Happiness scales passive income: h=0 → 0.5×, h=50 → 1.0× (baseline), h=100 → 1.5×
@@ -1302,6 +1439,7 @@ function spawnConfetti(cx, cy, count) {
 
 // ── Click / Keyboard ──────────────────────────────────────────────────────────
 function petPuma(cx, cy) {
+  state.totalClicks += 1;
   const gain = state.ppc * incomeMultiplier();
   state.pets      += gain;
   state.totalPets += gain;
@@ -1434,6 +1572,59 @@ function refreshShopButtons() {
   });
 }
 
+// ── Upgrade Synergies (Feature C) ─────────────────────────────────────────────
+const SYNERGIES = [
+  { id: 'calm_groomer',
+    name: 'Relaxed Grooming',
+    icon: '🌿',
+    requires: [{id:'brush',count:3},{id:'catnip',count:2}],
+    effect: 'Happiness decays 50% slower.' },
+  { id: 'machine_whisperer',
+    name: 'Machine-Assisted Affection',
+    icon: '🤖',
+    requires: [{id:'machine',count:1},{id:'whisperer',count:1}],
+    effect: '+3 pets/sec bonus per Petting Machine owned.' },
+  { id: 'sanctuary_dimension',
+    name: 'Dimensional Sanctuary',
+    icon: '🌌',
+    requires: [{id:'sanctuary',count:1},{id:'dimension',count:1}],
+    effect: 'All passive income +25%.' },
+];
+const unlockedSynergies = new Set();
+
+function checkSynergies() {
+  let anyNew = false;
+  SYNERGIES.forEach((syn) => {
+    if (unlockedSynergies.has(syn.id)) return;
+    const met = syn.requires.every(r => (state.owned[r.id] || 0) >= r.count);
+    if (!met) return;
+    unlockedSynergies.add(syn.id);
+    anyNew = true;
+    showToast(syn.icon + ' Synergy unlocked: <b>' + syn.name + '</b>');
+    const rect = pumaWrapper.getBoundingClientRect();
+    spawnConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2, 14);
+  });
+  if (anyNew) buildSynergiesPanel();
+}
+
+function buildSynergiesPanel() {
+  const panel = document.getElementById('synergy-panel');
+  if (!panel) return;
+  panel.innerHTML = '<div class="panel-title">&#x2728; Synergies</div>';
+  if (unlockedSynergies.size === 0) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  SYNERGIES.forEach((syn) => {
+    if (!unlockedSynergies.has(syn.id)) return;
+    const row = document.createElement('div');
+    row.className = 'syn-item';
+    row.innerHTML =
+      '<span class="syn-icon">' + syn.icon + '</span>' +
+      '<span class="syn-text"><span class="syn-name">' + syn.name + '</span>' +
+      '<span class="syn-effect">' + syn.effect + '</span></span>';
+    panel.appendChild(row);
+  });
+}
+
 // ── Achievements ──────────────────────────────────────────────────────────────
 function buildAchievements() {
   achPanel.innerHTML = '<div class="panel-title">&#x1F3C6; Achievements</div>';
@@ -1470,6 +1661,7 @@ function checkAchievements() {
       if (items[idx]) flashEl(items[idx], 'just-earned');
     });
   }
+  checkSynergies();
 }
 
 // ── UI Update ─────────────────────────────────────────────────────────────────
@@ -1496,13 +1688,58 @@ function checkMilestones() {
 }
 
 // Dirty-check sentinels — avoid redundant DOM writes on every RAF tick
-let _lastPumaState = null;
-let _lastHapColor  = null;
-let _lastHapMult   = -1; // -1 = uninitialised; skip on first tick
-let _lastTitle     = '';
-let _wasMaxHappy   = false;
-let _lastPpc       = -1; // -1 = uninitialised; skip flash on first tick
-let _lastPps       = -1;
+let _lastPumaState   = null;
+let _lastHapColor    = null;
+let _lastHapMult     = -1; // -1 = uninitialised; skip on first tick
+let _lastTitle       = '';
+let _wasMaxHappy     = false;
+let _lastPpc         = -1; // -1 = uninitialised; skip flash on first tick
+let _lastPps         = -1;
+let _lastStatsHash   = '';  // Feature B
+let _lastGoldenActive = null; // Feature A
+
+// ── Golden Puma Events (Feature A) ────────────────────────────────────────────
+// Fires ~every 3–8 min; lasts 30 s; grants 3× income during the burst.
+let _nextGoldenAt = performance.now() + (180 + Math.random() * 300) * 1000;
+
+function showGoldenBanner() {
+  if (document.getElementById('golden-banner')) return; // already shown
+  const banner = document.createElement('div');
+  banner.id = 'golden-banner';
+  banner.innerHTML =
+    '&#x2728; Golden Puma! <strong>3&times; income</strong> for ' +
+    '<span id="golden-countdown">30s</span> ' +
+    '<button id="golden-dismiss" aria-label="Dismiss banner">&times;</button>';
+  document.body.appendChild(banner);
+  banner.querySelector('#golden-dismiss').addEventListener('click', () => {
+    banner.classList.add('dismissing');
+    banner.addEventListener('animationend', () => banner.remove(), { once: true });
+  });
+}
+
+function hideGoldenBanner() {
+  const b = document.getElementById('golden-banner');
+  if (!b) return;
+  b.classList.add('dismissing');
+  b.addEventListener('animationend', () => b.remove(), { once: true });
+}
+
+function startGoldenEvent() {
+  state.goldenActive = true;
+  state.goldenEndsAt = performance.now() + 30000;
+  pumaWrapper.classList.add('golden-puma');
+  showGoldenBanner();
+  _nextGoldenAt = performance.now() + (180 + Math.random() * 300) * 1000;
+  saveGame();
+}
+
+function endGoldenEvent() {
+  state.goldenActive = false;
+  state.goldenEndsAt = 0;
+  pumaWrapper.classList.remove('golden-puma');
+  hideGoldenBanner();
+  saveGame();
+}
 
 // Restart-safe one-shot CSS keyframe helper — removes class, forces reflow, re-adds
 function flashEl(el, cls) {
@@ -1590,6 +1827,18 @@ function updateUI() {
     _lastPumaState = ps;
   }
 
+  // Feature B — Stats panel dirty-check
+  const statsHash = state.totalClicks + '|' + Math.floor(state.timePlayed) + '|' + Math.floor(state.peakPps);
+  if (statsHash !== _lastStatsHash) {
+    _lastStatsHash = statsHash;
+    const elClicks = document.getElementById('sp-clicks');
+    const elTime   = document.getElementById('sp-time');
+    const elPeak   = document.getElementById('sp-peak');
+    if (elClicks) elClicks.textContent = fmt(state.totalClicks);
+    if (elTime)   elTime.textContent   = fmtDuration(Math.floor(state.timePlayed));
+    if (elPeak)   elPeak.textContent   = fmt(Math.floor(state.peakPps)) + ' /s';
+  }
+
   refreshShopButtons();
   maybeShowHapHint();
 }
@@ -1602,16 +1851,34 @@ function tick(now) {
   const dt = Math.min((now - lastTick) / 1000, 5);
   lastTick = now;
 
+  // Feature A — Golden event lifecycle
+  if (state.goldenActive && now >= state.goldenEndsAt) endGoldenEvent();
+  if (!state.goldenActive && now >= _nextGoldenAt)     startGoldenEvent();
+
+  // Feature B — Accumulate play time
+  state.timePlayed += dt;
+
   if (state.pps > 0) {
-    const gain = state.pps * incomeMultiplier() * happinessMultiplier() * dt;
+    // Feature C — machine_whisperer: +3 pps per Petting Machine owned
+    const machinePpsBonus = unlockedSynergies.has('machine_whisperer') ? (state.owned.machine || 0) * 3 : 0;
+    // Feature C — sanctuary_dimension: all passive income +25%
+    const ppsBoost = unlockedSynergies.has('sanctuary_dimension') ? 1.25 : 1.0;
+    const effectivePps = (state.pps + machinePpsBonus) * ppsBoost;
+    const gain = effectivePps * incomeMultiplier() * happinessMultiplier() * dt;
     state.pets      += gain;
     state.totalPets += gain;
+
+    // Feature B — Track peak effective PPS
+    const effPpsCur = effectivePps * incomeMultiplier() * happinessMultiplier();
+    if (effPpsCur > state.peakPps) state.peakPps = effPpsCur;
   }
 
   // Happiness decays toward 50 naturally, faster below 50
+  // Feature C — calm_groomer: decay rate halved
+  const hapDecayMult = unlockedSynergies.has('calm_groomer') ? 0.5 : 1.0;
   const target = 50;
   const diff   = target - state.happiness;
-  state.happiness += diff * dt * 0.12 + (diff > 0 ? 0 : -1.2 * dt);
+  state.happiness += (diff * dt * 0.12 + (diff > 0 ? 0 : -1.2 * dt)) * hapDecayMult;
   state.happiness  = Math.max(0, Math.min(100, state.happiness));
 
   // Burst of hearts when happiness first maxes out this session
@@ -1621,6 +1888,12 @@ function tick(now) {
     spawnConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2, 10);
   }
   if (state.happiness < 95) _wasMaxHappy = false;
+
+  // Feature A — Update golden countdown display
+  if (state.goldenActive) {
+    const cd = document.getElementById('golden-countdown');
+    if (cd) cd.textContent = Math.ceil((state.goldenEndsAt - now) / 1000) + 's';
+  }
 
   updateUI();
   checkAchievements();
@@ -1656,7 +1929,7 @@ if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) {
 // ── Console easter egg — reward the curious ───────────────────────────────────
 console.log(`%c🐆  PumaClicker`, `font-size:28px;color:${CONSOLE_COLORS.brand};font-family:monospace;font-weight:bold;`);
 console.log(`%cHey, curious one. The puma sees you. 👀`, `font-size:13px;color:${CONSOLE_COLORS.mid};`);
-console.log(`%cYou found the secret. Nothing happens here.\n...or does it?`, `font-size:11px;color:${CONSOLE_COLORS.ghost};`);
+console.log(`%cType puma.help() to see what the puma knows.`, `font-size:11px;color:${CONSOLE_COLORS.ghost};`);
 
 // ── Onboarding ─────────────────────────────────────────────────────────────────
 // LocalStorage keys are versioned so future changes can re-show hints.
@@ -1671,6 +1944,7 @@ function saveGame() {
       state,
       earned:     Array.from(earned),
       celebrated: Array.from(_celebratedMilestones),
+      synergies:  Array.from(unlockedSynergies),
       savedAt:    Date.now(),
     }));
   } catch (e) {
@@ -1696,10 +1970,19 @@ function loadGame() {
     if (typeof s.happiness      === 'number') state.happiness      = s.happiness;
     if (typeof s.transcendences === 'number') state.transcendences = s.transcendences;
     if (s.owned && typeof s.owned === 'object') state.owned        = s.owned;
+    // Feature A
+    if (typeof s.goldenActive   === 'boolean') state.goldenActive  = s.goldenActive;
+    if (typeof s.goldenEndsAt   === 'number')  state.goldenEndsAt  = s.goldenEndsAt;
+    // Feature B
+    if (typeof s.totalClicks    === 'number') state.totalClicks    = s.totalClicks;
+    if (typeof s.timePlayed     === 'number') state.timePlayed     = s.timePlayed;
+    if (typeof s.peakPps        === 'number') state.peakPps        = s.peakPps;
 
     // Restore achievement + milestone sets
     if (Array.isArray(save.earned))     save.earned.forEach(id => earned.add(id));
     if (Array.isArray(save.celebrated)) save.celebrated.forEach(m  => _celebratedMilestones.add(m));
+    // Feature C — restore synergies
+    if (Array.isArray(save.synergies))  save.synergies.forEach(id => unlockedSynergies.add(id));
 
     // ── Offline income ──────────────────────────────────────────────────────
     // Award passive income earned while the tab was closed.
@@ -1713,6 +1996,24 @@ function loadGame() {
         offlinePets    = state.pps * incomeMultiplier() * 1.0 * elapsed; // h=50 → mult=1.0
         state.pets      += offlinePets;
         state.totalPets += offlinePets;
+      }
+    }
+
+    // Feature A — If golden event was active at save time, check if it's still valid
+    if (state.goldenActive) {
+      // Convert savedAt-relative endAt to performance.now()-relative
+      const savedAt    = save.savedAt || Date.now();
+      const elapsed    = Date.now() - savedAt;
+      const remaining  = state.goldenEndsAt - elapsed; // approximate
+      if (remaining > 0) {
+        state.goldenEndsAt = performance.now() + remaining;
+        pumaWrapper.classList.add('golden-puma');
+        // Banner will appear on first tick via showGoldenBanner() path, or show now:
+        showGoldenBanner();
+      } else {
+        // Event already expired while tab was closed
+        state.goldenActive = false;
+        state.goldenEndsAt = 0;
       }
     }
 
@@ -1743,6 +2044,19 @@ function loadGame() {
         confirmTimeout = null;
       }, 3000);
     }
+  });
+}
+
+// Feature B — Stats panel toggle
+{
+  const toggleBtn = document.getElementById('stats-toggle');
+  const body      = document.getElementById('stats-body');
+  const chevron   = toggleBtn.querySelector('.stats-chevron');
+  toggleBtn.addEventListener('click', () => {
+    const expanded = toggleBtn.getAttribute('aria-expanded') === 'true';
+    toggleBtn.setAttribute('aria-expanded', !expanded);
+    body.classList.toggle('hidden', expanded);
+    chevron.textContent = expanded ? '\u25B8' : '\u25BE';
   });
 }
 
@@ -1816,6 +2130,7 @@ if (!localStorage.getItem(OB_WELCOME_KEY)) {
 const _saveResult = loadGame();
 buildShop();
 buildAchievements();
+buildSynergiesPanel(); // Feature C — restore synergy panel from loaded save
 updateUI();
 checkAchievements(); // catch any achievements unlocked by offline income
 if (_saveResult.loaded && state.totalPets > 0) {
@@ -1828,6 +2143,90 @@ if (_saveResult.loaded && state.totalPets > 0) {
 }
 setInterval(saveGame, 30000); // auto-save every 30 s (catches passive income between interactions)
 requestAnimationFrame(tick);
+
+// ── Console API (Feature D) ────────────────────────────────────────────────────
+window.puma = Object.freeze({
+  help() {
+    const b = `color:${CONSOLE_COLORS.brand};font-weight:bold`;
+    const m = `color:${CONSOLE_COLORS.mid}`;
+    const g = `color:${CONSOLE_COLORS.ghost}`;
+    console.group('%c🐆 puma cheat sheet', b);
+    console.log('%cpuma.give(n)%c      — add n pets (default 1000)', b, m);
+    console.log('%cpuma.golden()%c     — trigger a golden event right now', b, m);
+    console.log('%cpuma.happy()%c      — set happiness to 100', b, m);
+    console.log('%cpuma.transcend()%c  — fast-track to transcendence', b, m);
+    console.log('%cpuma.unlockAll()%c  — buy every upgrade once', b, m);
+    console.log('%cpuma.stats()%c      — dump full game state', b, m);
+    console.log('%c(the puma judges you, but complies)', g, '');
+    console.groupEnd();
+  },
+
+  give(n = 1000) {
+    const amount = Number(n) || 1000;
+    state.pets      += amount;
+    state.totalPets += amount;
+    updateUI();
+    checkAchievements();
+    saveGame();
+    console.log(`%c+${fmt(amount)} pets gifted 🐾`, `color:${CONSOLE_COLORS.brand}`);
+  },
+
+  golden() {
+    if (state.goldenActive) {
+      console.log(`%cGolden event already active!`, `color:${CONSOLE_COLORS.mid}`);
+      return;
+    }
+    startGoldenEvent();
+    console.log(`%c✨ Golden Puma event started — 3× income for 30s`, `color:${CONSOLE_COLORS.brand}`);
+  },
+
+  happy() {
+    state.happiness = 100;
+    updateUI();
+    console.log(`%c💛 Happiness maxed out`, `color:${CONSOLE_COLORS.brand}`);
+  },
+
+  transcend() {
+    state.totalPets = Math.max(state.totalPets, transcendThreshold());
+    updateUI();
+    console.log(`%c✨ Threshold reached — click the Transcend button!`, `color:${CONSOLE_COLORS.brand}`);
+  },
+
+  unlockAll() {
+    UPGRADES.forEach(u => {
+      if (!state.owned[u.id]) {
+        const cost = upgradeCost(u);
+        state.pets = Math.max(state.pets, cost);
+        state.owned[u.id] = (state.owned[u.id] || 0) + 1;
+        u.fn();
+      }
+    });
+    buildShop();
+    checkSynergies();
+    updateUI();
+    saveGame();
+    console.log(`%c🛒 All upgrades unlocked`, `color:${CONSOLE_COLORS.brand}`);
+  },
+
+  stats() {
+    const b = `color:${CONSOLE_COLORS.brand};font-weight:bold`;
+    const m = `color:${CONSOLE_COLORS.mid}`;
+    console.group('%c🐆 PumaClicker — Game State', b);
+    console.log(`%cpets:          %c${fmt(state.pets)}`, b, m);
+    console.log(`%ctotalPets:     %c${fmt(state.totalPets)}`, b, m);
+    console.log(`%cppc (base):    %c${fmt(state.ppc)}`, b, m);
+    console.log(`%cpps (base):    %c${fmt(state.pps)}`, b, m);
+    console.log(`%chappiness:     %c${Math.floor(state.happiness)}%`, b, m);
+    console.log(`%ctranscendences:%c${state.transcendences}`, b, m);
+    console.log(`%cgoldenActive:  %c${state.goldenActive}`, b, m);
+    console.log(`%ctotalClicks:   %c${fmt(state.totalClicks)}`, b, m);
+    console.log(`%ctimePlayed:    %c${fmtDuration(Math.floor(state.timePlayed))}`, b, m);
+    console.log(`%cpeakPps:       %c${fmt(Math.floor(state.peakPps))} /s`, b, m);
+    console.log(`%csynergies:     %c${[...unlockedSynergies].join(', ') || 'none'}`, b, m);
+    console.log(`%cowned:`, b, state.owned);
+    console.groupEnd();
+  },
+});
 </script>
 </body>
 </html>
