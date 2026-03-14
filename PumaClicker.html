@@ -635,8 +635,10 @@ h1 {
 
 .upg-btn.just-affordable { animation: becameAffordable 0.9s ease-out; }
 
-/* ── Reduced-motion: disable all infinite/looping animations ── */
+/* ── Reduced-motion: disable all animations ── */
 @media (prefers-reduced-motion: reduce) {
+  h1, .subtitle, #puma-wrapper, #stats,
+  #happiness-box, #side-panel { animation: none; opacity: 1; transform: none; }
   #puma-wrapper::before,
   #transcend-zone::before { animation: none; opacity: 0; }
   .particle { animation: none; opacity: 0; }
@@ -645,6 +647,8 @@ h1 {
   .upg-btn  { transition: none; }
   .float-num, .transcend-flash { animation: none; opacity: 0; }
   .upg-btn.just-affordable { animation: none; }
+  .count-bumping, .mood-flashing,
+  .ach-item.just-earned, .stat-item .val.stat-bumping { animation: none; transform: none; }
 }
 
 /* ── Responsive: single-column layout on narrow viewports ── */
@@ -732,6 +736,57 @@ h1 {
     body { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
   }
 }
+
+/* ── Page load choreography ──────────────────────────────────────────────────── */
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pageEnterRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+h1            { animation: pageEnter      0.55s var(--ease-out-quart)  0ms  both; }
+.subtitle     { animation: pageEnter      0.55s var(--ease-out-quart) 80ms  both; }
+#puma-wrapper { animation: pageEnter      0.5s  var(--ease-out-quart) 150ms both; }
+#stats        { animation: pageEnter      0.5s  var(--ease-out-quart) 200ms both; }
+#happiness-box{ animation: pageEnter      0.5s  var(--ease-out-quart) 250ms both; }
+#side-panel   { animation: pageEnterRight 0.55s var(--ease-out-quart) 180ms both; }
+
+/* ── Pet count bump on click ─────────────────────────────────────────────────── */
+@keyframes countBump {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.count-bumping { animation: countBump 0.22s var(--ease-out-quart) forwards; }
+
+/* ── Puma mood change flash ──────────────────────────────────────────────────── */
+@keyframes moodFlash {
+  0%   { opacity: 0.45; filter: brightness(2.8); }
+  100% { opacity: 1;    filter: brightness(1); }
+}
+
+.mood-flashing { animation: moodFlash 0.3s var(--ease-out-quart) forwards; }
+
+/* ── Achievement earned glow ─────────────────────────────────────────────────── */
+@keyframes achEarned {
+  0%   { background: color-mix(in srgb, var(--amber) 32%, transparent); transform: scale(1.03); }
+  100% { background: color-mix(in srgb, var(--amber) 11%, transparent); transform: scale(1); }
+}
+
+.ach-item.just-earned { animation: achEarned 0.65s var(--ease-out-quart) forwards; }
+
+/* ── Stat value bump ─────────────────────────────────────────────────────────── */
+@keyframes statBump {
+  0%   { color: var(--amber-bright); transform: scale(1.28); }
+  100% { color: var(--text-warm);    transform: scale(1); }
+}
+
+.stat-item .val.stat-bumping { animation: statBump 0.35s var(--ease-out-quart) forwards; }
 
 /* ── Onboarding: welcome card ──────────────────────────────────────────────── */
 #onboard-card {
@@ -1212,6 +1267,7 @@ function petPuma(cx, cy) {
 
   pumaWrapper.classList.add('petting');
   setTimeout(() => pumaWrapper.classList.remove('petting'), 140);
+  flashEl(petCountEl, 'count-bumping');
 
   if (cx !== undefined) {
     spawnParticles(cx, cy);
@@ -1303,15 +1359,23 @@ function buildAchievements() {
 }
 
 function checkAchievements() {
-  let any = false;
+  const newlyEarned = [];
   ACHIEVEMENTS.forEach((a) => {
     if (!earned.has(a.id) && a.check()) {
       earned.add(a.id);
+      newlyEarned.push(a.id);
       showToast(a.icon + ' Achievement: <b>' + a.name + '</b>');
-      any = true;
     }
   });
-  if (any) buildAchievements();
+  if (newlyEarned.length) {
+    buildAchievements();
+    // Glow each newly unlocked achievement item in the panel
+    newlyEarned.forEach((id) => {
+      const idx   = ACHIEVEMENTS.findIndex((a) => a.id === id);
+      const items = achPanel.querySelectorAll('.ach-item');
+      if (items[idx]) flashEl(items[idx], 'just-earned');
+    });
+  }
 }
 
 // ── UI Update ─────────────────────────────────────────────────────────────────
@@ -1342,13 +1406,31 @@ let _lastPumaState = null;
 let _lastHapColor  = null;
 let _lastTitle     = '';
 let _wasMaxHappy   = false;
+let _lastPpc       = -1; // -1 = uninitialised; skip flash on first tick
+let _lastPps       = -1;
+
+// Restart-safe one-shot CSS keyframe helper — removes class, forces reflow, re-adds
+function flashEl(el, cls) {
+  el.classList.remove(cls);
+  void el.offsetWidth; // force reflow so animation restarts from frame 0
+  el.classList.add(cls);
+  el.addEventListener('animationend', () => el.classList.remove(cls), { once: true });
+}
 
 function updateUI() {
-  const mult = incomeMultiplier();
+  const mult   = incomeMultiplier();
+  const curPpc = Math.floor(state.ppc * mult);
+  const curPps = Math.floor(state.pps * mult);
   petCountEl.textContent = fmt(state.pets);
-  ppcVal.textContent     = fmt(Math.floor(state.ppc * mult));
-  ppsVal.textContent     = fmt(state.pps * mult);
+  ppcVal.textContent     = fmt(curPpc);
+  ppsVal.textContent     = fmt(curPps);
   totalVal.textContent   = fmt(state.totalPets);
+
+  // Flash stat values when they increase from an upgrade purchase
+  if (_lastPpc >= 0 && curPpc > _lastPpc) flashEl(ppcVal, 'stat-bumping');
+  if (_lastPps >= 0 && curPps > _lastPps) flashEl(ppsVal, 'stat-bumping');
+  _lastPpc = curPpc;
+  _lastPps = curPps;
 
   // Live pet count in browser tab — dirty-checked to avoid needless string thrash
   const newTitle = fmt(state.pets) + ' 🐆 PumaClicker';
@@ -1399,6 +1481,7 @@ function updateUI() {
   // Dirty-check: only rewrite puma art when mood state changes
   const ps = getPumaState();
   if (ps !== _lastPumaState) {
+    if (_lastPumaState !== null) flashEl(pumaArt, 'mood-flashing'); // skip flash on initial load
     pumaArt.style.color = PUMA_COLORS[ps];
     pumaArt.textContent = ART[ps].join('\n');
     _lastPumaState = ps;
