@@ -938,6 +938,135 @@ h1            { animation: pageEnter      0.55s var(--ease-out-quart)  0ms  both
 
 .count-bumping { animation: countBump 0.22s var(--ease-out-quart) forwards; }
 
+/* ── About modal ─────────────────────────────────────────────────────────────── */
+#page-header {
+  position: relative;
+  text-align: center;
+  margin-bottom: 0;
+  width: 100%;
+  max-width: 980px;
+}
+
+#about-btn {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: 1px solid color-mix(in srgb, var(--amber) 35%, transparent);
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.8em;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#about-btn:hover { color: var(--amber); border-color: var(--amber); }
+#about-btn:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; border-radius: 50%; }
+
+#about-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--bg-deep) 80%, transparent);
+  backdrop-filter: blur(4px);
+  z-index: 900;
+  align-items: center;
+  justify-content: center;
+}
+
+#about-overlay.visible { display: flex; }
+
+#about-window {
+  background: var(--bg-card);
+  border: 1px solid color-mix(in srgb, var(--amber) 30%, transparent);
+  border-radius: 18px;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--amber) 8%, transparent),
+    0 24px 48px color-mix(in srgb, var(--bg-deep) 70%, transparent);
+  width: min(500px, calc(100vw - 32px));
+  max-height: calc(100dvh - 80px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: aboutIn 0.18s var(--ease-out-quart);
+}
+
+@keyframes aboutIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+#about-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--amber) 12%, transparent);
+}
+
+#about-title {
+  font-family: var(--font-display);
+  font-size: 1em;
+  font-weight: 700;
+  color: var(--amber);
+  letter-spacing: 0.01em;
+}
+
+#about-close {
+  background: none;
+  border: 1px solid color-mix(in srgb, var(--amber) 30%, transparent);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 0.8em;
+  font-weight: 700;
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  letter-spacing: 0.06em;
+}
+
+#about-close:hover { color: var(--amber); border-color: var(--amber); }
+#about-close:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; border-radius: 6px; }
+
+#about-body {
+  padding: 18px 20px 20px;
+  overflow-y: auto;
+  font-size: 0.84em;
+  line-height: 1.65;
+  color: var(--text-mid);
+}
+
+#about-body::-webkit-scrollbar { width: 4px; }
+#about-body::-webkit-scrollbar-track { background: var(--bg-deep); }
+#about-body::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--amber) 30%, transparent); border-radius: 2px; }
+
+#about-body p { margin-bottom: 14px; }
+#about-body p:last-child { margin-bottom: 0; }
+#about-body em { color: var(--amber); font-style: normal; }
+#about-body a { color: var(--amber); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--amber) 40%, transparent); }
+#about-body a:hover { border-bottom-color: var(--amber); }
+
+.about-section-title {
+  font-family: var(--font-body);
+  font-size: 0.78em;
+  font-weight: 700;
+  color: var(--amber);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin: 18px 0 8px;
+}
+
+.about-section-title:first-child { margin-top: 0; }
+
 /* ── Puma mood change flash ──────────────────────────────────────────────────── */
 @keyframes moodFlash {
   0%   { opacity: 0.45; filter: brightness(2.8); }
@@ -1051,8 +1180,11 @@ h1            { animation: pageEnter      0.55s var(--ease-out-quart)  0ms  both
 </head>
 <body>
 
-<h1>&#x1F406; PumaClicker</h1>
-<p class="subtitle">click the puma. pet the puma. be the puma.</p>
+<header id="page-header">
+  <h1>&#x1F406; PumaClicker</h1>
+  <p class="subtitle">click the puma. pet the puma. be the puma.</p>
+  <button id="about-btn" onclick="openAbout()" title="About" aria-label="About PumaClicker">?</button>
+</header>
 
 <div id="game">
 
@@ -1140,6 +1272,29 @@ h1            { animation: pageEnter      0.55s var(--ease-out-quart)  0ms  both
 </div>
 
 <div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<!-- ===================== ABOUT MODAL ===================== -->
+<div id="about-overlay" onclick="closeAbout()" role="dialog" aria-modal="true" aria-labelledby="about-title">
+  <div id="about-window" onclick="event.stopPropagation()">
+    <div id="about-header">
+      <span id="about-title">&#x1F406; About PumaClicker</span>
+      <button id="about-close" onclick="closeAbout()">&#x2715; CLOSE</button>
+    </div>
+    <div id="about-body">
+      <p style="color:var(--text-warm);font-weight:700">Thanks for playing!</p>
+
+      <p>PumaClicker is my take on the most pointless game genre in the world: idle clickers. From Cookie Clicker to AdVenture Capitalist, I have wasted time <em>studied</em> a number of these games just because I like the crazy math mechanics they use.</p>
+
+      <p>The game is pretty simple: Click the puma. Buy upgrades to make clicks more effective or to do the clicking for you. Eventually you can reset everything and get a global click-multiplier. If you&rsquo;re diligent (or just patient) you&rsquo;ll get an achievement. YAY!</p>
+
+      <div class="about-section-title">Why This Game Exists</div>
+
+      <p>PumaClicker is the result of my very first exploration into AI-assisted development with <em>Claude Code</em>. It was meant to be a throw-away project just to practice with, but then I found myself playing it, and now I&rsquo;m emotionally invested.</p>
+
+      <p>Built by <a href="https://www.greykit.com" target="_blank" rel="noopener">greykit.com</a></p>
+    </div>
+  </div>
+</div>
 
 <script>
 // ── Design token mirrors ───────────────────────────────────────────────────────
@@ -1506,6 +1661,21 @@ pumaWrapper.addEventListener('keydown', (e) => {
     e.preventDefault();
     petPuma();
   }
+});
+
+// ── About modal ────────────────────────────────────────────────────────────────
+function openAbout() {
+  document.getElementById('about-overlay').classList.add('visible');
+  document.getElementById('about-close').focus();
+}
+
+function closeAbout() {
+  document.getElementById('about-overlay').classList.remove('visible');
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeAbout();
+  if (e.key === '?' && !e.target.matches('input, textarea')) openAbout();
 });
 
 // ── Shop ──────────────────────────────────────────────────────────────────────
