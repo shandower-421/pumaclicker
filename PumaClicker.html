@@ -798,14 +798,26 @@ h1 {
 }
 
 /* ── Responsive: two-column on medium viewports (tablet) ── */
-@media (max-width: 780px) and (min-width: 541px) {
+@media (max-width: 720px) and (min-width: 541px) {
+  body {
+    height: auto;
+    min-height: 100dvh;
+    min-height: 100vh;
+    overflow-y: auto;
+  }
   #game {
-    /* Left panel drops below; puma and shop share the top row */
+    /* Puma and shop share the top row; left panel is full-width below */
     grid-template-columns: 1fr 1fr;
     grid-template-rows: auto auto;
+    align-items: start;
+    height: auto;
+    flex: none;
   }
+  #main-panel  { grid-column: 1; grid-row: 1; }
+  #side-panel  { grid-column: 2; grid-row: 1; }
   #left-panel {
-    grid-column: 1 / -1; /* full width below the top two panels */
+    grid-column: 1 / -1;
+    grid-row: 2;
     flex-direction: row;
     flex-wrap: wrap;
     overflow-y: visible;
@@ -1283,7 +1295,7 @@ h1            { animation: pageEnter      0.55s var(--ease-out-quart)  0ms  both
     <div id="about-body">
       <p style="color:var(--text-warm);font-weight:700">Thanks for playing!</p>
 
-      <p>PumaClicker is my take on the most pointless game genre in the world: idle clickers. From Cookie Clicker to AdVenture Capitalist, I have wasted time <em>studied</em> a number of these games just because I like the crazy math mechanics they use.</p>
+      <p>PumaClicker is my take on the most pointless game genre in the world: idle clickers. From Cookie Clicker to AdVenture Capitalist, I have <s>wasted time</s> <em>studied</em> a number of these games just because I like the crazy math mechanics they use.</p>
 
       <p>The game is pretty simple: Click the puma. Buy upgrades to make clicks more effective or to do the clicking for you. Eventually you can reset everything and get a global click-multiplier. If you&rsquo;re diligent (or just patient) you&rsquo;ll get an achievement. YAY!</p>
 
